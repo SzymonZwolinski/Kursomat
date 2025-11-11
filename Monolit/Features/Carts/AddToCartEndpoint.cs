@@ -38,7 +38,7 @@ namespace Monolit.Features.Carts
             var course = await _context.Courses.FindAsync(req.CourseId);
             if (course == null)
             {
-                await SendNotFoundAsync(ct);
+                await Send.NotFoundAsync(ct);
                 return;
             }
 
@@ -48,7 +48,7 @@ namespace Monolit.Features.Carts
                 await _context.SaveChangesAsync(ct);
             }
 
-            await SendOkAsync(ct);
+            await Send.OkAsync(ct);
         }
     }
 

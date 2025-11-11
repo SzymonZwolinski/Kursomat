@@ -1,5 +1,4 @@
 ﻿using FastEndpoints;
-using Monolit.Entities;
 using Monolit.Helpers.Etc.Interfaces;
 using Monolit.Helpers.Repositories.Interfaces;
 
@@ -28,7 +27,7 @@ namespace Monolit.Features.Account.Create
 		public override async Task HandleAsync(CreateRequest req, CancellationToken ct)
 		{
 			var passwordHash = _passwordHasher.HashPassword(req.Password);
-			var user = new User(req.Login, passwordHash, req.Email);
+			var user = new Entities.User(req.Login, passwordHash, req.Email);
 
 			var userId = await _accountRepository.CreateAccountAsync(user, ct);
 			var response = new CreateResponse(UserId: userId);

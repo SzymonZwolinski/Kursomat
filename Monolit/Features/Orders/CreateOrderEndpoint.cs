@@ -36,11 +36,11 @@ namespace Monolit.Features.Orders
 
             if (cart == null || !cart.Items.Any())
             {
-                await SendNotFoundAsync(ct);
+                await Send.NotFoundAsync(ct);
                 return;
             }
 
-            var order = new Order
+            var order = new Entities.Order
             {
                 UserId = userId,
                 OrderDate = DateTime.UtcNow,
@@ -75,7 +75,7 @@ namespace Monolit.Features.Orders
             await _context.SaveChangesAsync(ct);
 
 
-            await SendAsync(new CreateOrderResponse { OrderId = order.Id }, cancellation: ct);
+            await Send.OkAsync(new CreateOrderResponse { OrderId = order.Id }, cancellation: ct);
         }
     }
 

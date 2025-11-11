@@ -44,7 +44,7 @@ namespace Monolit.Features.Carts
                 cart = new CartDto();
             }
 
-            await SendAsync(cart, cancellation: ct);
+            await Send.OkAsync(cart, cancellation: ct);
         }
     }
 }

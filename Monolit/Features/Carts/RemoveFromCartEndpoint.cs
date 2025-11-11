@@ -30,7 +30,7 @@ namespace Monolit.Features.Carts
 
             if (cart == null)
             {
-                await SendNotFoundAsync(ct);
+                await Send.NotFoundAsync(ct);
                 return;
             }
 
@@ -41,7 +41,7 @@ namespace Monolit.Features.Carts
                 await _context.SaveChangesAsync(ct);
             }
 
-            await SendOkAsync(ct);
+            await Send.OkAsync(ct);
         }
     }
 

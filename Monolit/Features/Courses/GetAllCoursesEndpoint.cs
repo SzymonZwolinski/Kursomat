@@ -41,7 +41,7 @@ namespace Monolit.Features.Courses
                 })
                 .ToListAsync(ct);
 
-            await SendAsync(courses, cancellation: ct);
+            await Send.OkAsync(courses, cancellation: ct);
         }
     }
 }
