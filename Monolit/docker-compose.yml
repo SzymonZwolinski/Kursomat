@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  monolit-api:
+    image: monolit-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sql-server;Database=kursomat;User Id=sa;Password=TwojeSilneHaslo123!;TrustServerCertificate=True;
+    depends_on:
+      - sql-server
+
+  sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=TwojeSilneHaslo123!
