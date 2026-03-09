@@ -7,7 +7,7 @@ namespace Monolit.Features.Videos
     public class UploadVideoRequest
     {
         public Guid CourseId { get; set; }
-        public IFormFile File { get; set; }
+        public IFormFile File { get; set; } = default!;
     }
 
     public class UploadVideoEndpoint : Endpoint<UploadVideoRequest>

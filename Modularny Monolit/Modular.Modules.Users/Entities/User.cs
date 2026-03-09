@@ -2,9 +2,9 @@
 {
     internal class User
     {
-        public Guid Id { get; set; }
-        public string Login { get; set; }
-        public string Email { get; set; }
-        public string PasswordHash { get; set; }
+        public Guid Id { get; set; } = default!;
+        public string Login { get; set; } = default!;
+        public string Email { get; set; } = default!;
+        public string PasswordHash { get; set; } = default!;
     }
 }

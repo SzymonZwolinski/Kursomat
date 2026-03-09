@@ -4,7 +4,7 @@ using System.Reflection.Emit;
 
 namespace Modular.Modules.Courses.Data
 {
-    internal class CoursesDbContext : DbContext
+    public class CoursesDbContext : DbContext
     {
         public DbSet<Entities.Course> Courses { get; set; }
 

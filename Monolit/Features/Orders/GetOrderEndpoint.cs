@@ -12,7 +12,7 @@ namespace Monolit.Features.Orders
     public class OrderItemDto
     {
         public Guid CourseId { get; set; }
-        public string CourseName { get; set; }
+        public string CourseName { get; set; } = default!;
     }
 
     public class OrderDto

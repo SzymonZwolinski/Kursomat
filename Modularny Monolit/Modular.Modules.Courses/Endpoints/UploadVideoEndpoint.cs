@@ -1,13 +1,17 @@
-﻿using FastEndpoints;
+using FastEndpoints;
 using Microsoft.AspNetCore.Http;
 using Modular.Modules.Courses.Data;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
 
 namespace Modular.Modules.Courses.Endpoints
 {
     public class UploadVideoRequest
     {
-        public Guid CourseId { get; set; }
-        public IFormFile File { get; set; }
+        public Guid CourseId { get; set; } = default!;
+        public IFormFile File { get; set; } = default!;
     }
 
     internal class UploadVideoEndpoint : Endpoint<UploadVideoRequest>
@@ -31,7 +35,7 @@ namespace Modular.Modules.Courses.Endpoints
             var course = await _context.Courses.FindAsync(new object[] { req.CourseId }, ct);
             if (course == null)
             {
-                await Send.NotFoundAsync(ct);
+                await Send.NotFoundAsync(cancellation: ct);
                 return;
             }
 
