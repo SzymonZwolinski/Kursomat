@@ -23,7 +23,7 @@ namespace Monolit.Features.Carts
 
         public override async Task HandleAsync(AddToCartRequest req, CancellationToken ct)
         {
-            var userId = Guid.Parse(User.FindFirstValue("UserId"));
+            var userId = Guid.Parse(User.FindFirstValue("UserId") ?? Guid.Empty.ToString());
 
             var cart = await _context.Carts
                 .Include(c => c.Items)

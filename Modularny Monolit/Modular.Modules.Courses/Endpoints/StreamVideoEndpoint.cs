@@ -1,14 +1,18 @@
-﻿using FastEndpoints;
+using FastEndpoints;
 using Microsoft.AspNetCore.Http;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
 
 namespace Modular.Modules.Courses.Endpoints
 {
     public class StreamVideoRequest
     {
-        public Guid CourseId { get; set; }
+        public Guid CourseId { get; set; } = default!;
     }
 
-    internal class StreamVideoEndpoint : Endpoint<StreamVideoRequest, IResult>
+    internal class StreamVideoEndpoint : Endpoint<StreamVideoRequest>
     {
         public override void Configure()
         {
@@ -22,14 +26,12 @@ namespace Modular.Modules.Courses.Endpoints
 
             if (!File.Exists(filePath))
             {
-                await SendNotFoundAsync(ct);
+                await Send.NotFoundAsync(cancellation: ct);
                 return;
             }
 
             var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            var result = Results.File(fileStream, contentType: "video/mp4", enableRangeProcessing: true);
-
-            await SendResultAsync(result);
+            await Send.StreamAsync(fileStream, fileName: $"{req.CourseId}.mp4", contentType: "video/mp4", enableRangeProcessing: true, cancellation: ct);
         }
     }
 }

@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "q"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=Your_password123
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P Your_password123 -C -Q 'SELECT 1' || echo 'failed'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  users-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.Users
+    container_name: users-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__UsersDb=Server=sqlserver,1433;Database=Microservices_Users;User Id=sa;Password=Your_password123;TrustServerCertificate=True;
+      - ConnectionStrings__RabbitMq=rabbitmq://rabbitmq:5672
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  courses-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.Courses
+    container_name: courses-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__CoursesDb=Server=sqlserver,1433;Database=Microservices_Courses;User Id=sa;Password=Your_password123;TrustServerCertificate=True;
+      - ConnectionStrings__RabbitMq=rabbitmq://rabbitmq:5672
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  carts-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.Carts
+    container_name: carts-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__CartsDb=Server=sqlserver,1433;Database=Microservices_Carts;User Id=sa;Password=Your_password123;TrustServerCertificate=True;
+      - ConnectionStrings__RabbitMq=rabbitmq://rabbitmq:5672
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  sales-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.Sales
+    container_name: sales-api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__SalesDb=Server=sqlserver,1433;Database=Microservices_Sales;User Id=sa;Password=Your_password123;TrustServerCertificate=True;
+      - ConnectionStrings__RabbitMq=rabbitmq://rabbitmq:5672
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  apigateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.ApiGateway
+    container_name: apigateway
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    depends_on:
+      - users-api
+      - courses-api
+      - carts-api
+      - sales-api

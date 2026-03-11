@@ -23,7 +23,7 @@ namespace Monolit.Features.User.Update
         public override async Task HandleAsync(UpdateUserRequest req, CancellationToken ct)
         {
             var id = Route<Guid>("id");
-            var user = new Entities.User(req.Login, req.Password, req.Email)
+            var user = new Entities.User(req.Login, req.Password ?? string.Empty, req.Email)
             {
                 Id = id
             };

@@ -2,10 +2,10 @@ namespace Monolit.Entities
 {
     public class CartItem
     {
-        public Guid Id { get; set; }
-        public Guid CartId { get; set; }
-        public Cart Cart { get; set; }
-        public Guid CourseId { get; set; }
-        public Course Course { get; set; }
+        public Guid Id { get; set; } = default!;
+        public Guid CartId { get; set; } = default!;
+        public Cart Cart { get; set; } = default!;
+        public Guid CourseId { get; set; } = default!;
+        public Course Course { get; set; } = default!;
     }
 }

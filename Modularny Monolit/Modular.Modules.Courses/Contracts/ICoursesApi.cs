@@ -2,8 +2,8 @@
 {
     public class CourseDetailsDto
     {
-        public Guid Id { get; set; }
-        public decimal Price { get; set; }
+        public Guid Id { get; set; } = default!;
+        public decimal Price { get; set; } = default!;
     }
 
     public interface ICoursesApi

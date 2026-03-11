@@ -2,11 +2,11 @@ namespace Monolit.Entities
 {
     public class OrderItem
     {
-        public Guid Id { get; set; }
-        public Guid OrderId { get; set; }
-        public Order Order { get; set; }
-        public Guid CourseId { get; set; }
-        public Course Course { get; set; }
-        public decimal Price { get; set; }
+        public Guid Id { get; set; } = default!;
+        public Guid OrderId { get; set; } = default!;
+        public Order Order { get; set; } = default!;
+        public Guid CourseId { get; set; } = default!;
+        public Course Course { get; set; } = default!;
+        public decimal Price { get; set; } = default!;
     }
 }

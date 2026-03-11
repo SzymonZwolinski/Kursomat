@@ -1,22 +1,25 @@
-﻿using FastEndpoints;
+using FastEndpoints;
 using Modular.Modules.Courses.Data;
 using Modular.Modules.Courses.Entities;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
 
 namespace Modular.Modules.Courses.Endpoints
 {
     public class CreateCourseRequest
     {
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public decimal Price { get; set; }
+        public string Name { get; set; } = default!;
+        public string Description { get; set; } = default!;
+        public decimal Price { get; set; } = default!;
     }
 
     public class CourseDto
     {
-        public Guid Id { get; set; }
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public decimal Price { get; set; }
+        public Guid Id { get; set; } = default!;
+        public string Name { get; set; } = default!;
+        public string Description { get; set; } = default!;
+        public decimal Price { get; set; } = default!;
     }
 
     internal class CreateCourseEndpoint : Endpoint<CreateCourseRequest, CourseDto>
@@ -55,7 +58,7 @@ namespace Modular.Modules.Courses.Endpoints
                 Price = course.Price
             };
 
-            await SendOkAsync(response, ct);
+            await Send.OkAsync(response, cancellation: ct);
         }
     }
 }
