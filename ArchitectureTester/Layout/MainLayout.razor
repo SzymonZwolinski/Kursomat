@@ -1,0 +1,26 @@
+﻿@inherits LayoutComponentBase
+@inject ArchitectureTester.Services.ApiService ApiService
+
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
+    </div>
+
+    <main>
+        <div class="top-row px-4" style="justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <label for="archSelect" style="font-weight: bold; margin: 0;">Target Architecture:</label>
+                <select id="archSelect" @bind="ApiService.CurrentArchitecture" class="form-select" style="width: auto;">
+                    <option value="@ArchitectureTester.Models.ArchitectureType.Monolith">Monolit</option>
+                    <option value="@ArchitectureTester.Models.ArchitectureType.ModularMonolith">Modularny Monolit</option>
+                    <option value="@ArchitectureTester.Models.ArchitectureType.Microservices">Mikroserwisy</option>
+                </select>
+            </div>
+            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>

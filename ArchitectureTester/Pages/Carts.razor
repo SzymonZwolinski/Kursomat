@@ -1,0 +1,129 @@
+@page "/carts"
+@inject ApiService ApiService
+
+<PageTitle>Carts</PageTitle>
+
+<h1>Carts</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>Add to Cart</h3>
+        <div class="form-group mb-2">
+            <label>Cart ID (Customer ID)</label>
+            <input @bind="newCartItem.CartId" class="form-control" />
+        </div>
+        <div class="form-group mb-2">
+            <label>Course ID</label>
+            <input @bind="newCartItem.CourseId" class="form-control" />
+        </div>
+        <div class="form-group mb-2">
+            <label>Price</label>
+            <input @bind="newCartItem.Price" type="number" step="0.01" class="form-control" />
+        </div>
+        <button class="btn btn-primary" @onclick="AddToCart">Add to Cart</button>
+
+        @if (addResult != null)
+        {
+            <div class="alert @(addResult.IsSuccess ? "alert-success" : "alert-danger") mt-3">
+                <p>Status: @(addResult.IsSuccess ? "Success" : "Failed")</p>
+                <p>Time: @addResult.ElapsedMilliseconds ms</p>
+                @if (!addResult.IsSuccess)
+                {
+                    <p>Error: @addResult.ErrorMessage</p>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="col-md-6">
+        <h3>Get Cart</h3>
+        <div class="form-group mb-2">
+            <label>Cart ID to load</label>
+            <input @bind="loadCartId" class="form-control" />
+        </div>
+        <button class="btn btn-secondary" @onclick="GetCart">Load Cart</button>
+
+        @if (getResult != null)
+        {
+            <div class="alert @(getResult.IsSuccess ? "alert-success" : "alert-danger") mt-3">
+                <p>Status: @(getResult.IsSuccess ? "Success" : "Failed")</p>
+                <p>Time: @getResult.ElapsedMilliseconds ms</p>
+                @if (!getResult.IsSuccess)
+                {
+                    <p>Error: @getResult.ErrorMessage</p>
+                }
+            </div>
+        }
+
+        @if (cart != null)
+        {
+            <div class="mt-3">
+                <h4>Cart Items</h4>
+                <ul class="list-group">
+                    @foreach (var item in cart.Items)
+                    {
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            Course ID: @item.CourseId - $@item.Price
+                            <button class="btn btn-sm btn-danger" @onclick="() => RemoveFromCart(item.CourseId)">Remove</button>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private AddToCartDto newCartItem = new() { CartId = Guid.NewGuid(), CourseId = Guid.NewGuid() };
+    private Guid loadCartId;
+    private PerformanceResult? addResult;
+    private PerformanceResult? removeResult;
+    private PerformanceResult<CartDto>? getResult;
+    private CartDto? cart;
+
+    private async Task AddToCart()
+    {
+        addResult = await ApiService.PostAsync($"api/carts/{newCartItem.CartId}/items", new { CourseId = newCartItem.CourseId, Price = newCartItem.Price });
+    }
+
+    private async Task GetCart()
+    {
+        getResult = await ApiService.GetAsync<CartDto>($"api/carts/{loadCartId}");
+        if (getResult.IsSuccess)
+        {
+            cart = getResult.Data;
+        }
+        else
+        {
+            cart = null;
+        }
+    }
+
+    private async Task RemoveFromCart(Guid courseId)
+    {
+        removeResult = await ApiService.DeleteAsync($"api/carts/{loadCartId}/items/{courseId}");
+        if (removeResult.IsSuccess)
+        {
+            await GetCart(); // Reload cart after successful deletion
+        }
+    }
+
+    public class AddToCartDto
+    {
+        public Guid CartId { get; set; }
+        public Guid CourseId { get; set; }
+        public decimal Price { get; set; }
+    }
+
+    public class CartDto
+    {
+        public Guid Id { get; set; }
+        public List<CartItemDto> Items { get; set; } = new();
+    }
+
+    public class CartItemDto
+    {
+        public Guid CourseId { get; set; }
+        public decimal Price { get; set; }
+    }
+}

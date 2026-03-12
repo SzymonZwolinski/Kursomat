@@ -19,6 +19,16 @@ namespace Monolit
 			builder.Services.AddEndpointsApiExplorer();
 			builder.Services.AddSwaggerGen();
 
+			builder.Services.AddCors(options =>
+			{
+				options.AddPolicy("AllowAll", builder =>
+				{
+					builder.AllowAnyOrigin()
+						   .AllowAnyMethod()
+						   .AllowAnyHeader();
+				});
+			});
+
 			builder.Services.AddFastEndpoints();
 			var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -33,6 +43,7 @@ namespace Monolit
 
 			app.UseSwagger();
 			app.UseSwaggerUI();
+			app.UseCors("AllowAll");
 			app.UseFastEndpoints();
 
 			app.UseHttpsRedirection();
