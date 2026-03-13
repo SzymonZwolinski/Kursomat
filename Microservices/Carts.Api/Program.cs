@@ -1,3 +1,4 @@
+using FastEndpoints.Security;
 using FastEndpoints;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,8 @@ using Carts.Api.EventHandlers;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddAuthenticationJwtBearer(s => s.SigningKey = "VerySecretKeyForJwtAuthentication12345!@#");
+builder.Services.AddAuthorization();
 builder.Services.AddFastEndpoints();
 
 var connectionString = builder.Configuration.GetConnectionString("CartsDb") ?? "Server=localhost,1433;Database=Microservices_Carts;User Id=sa;Password=Your_password123;TrustServerCertificate=True;";
@@ -37,6 +40,9 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<CartsDbContext>();
     dbContext.Database.EnsureCreated();
 }
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseFastEndpoints();
 app.Run();
