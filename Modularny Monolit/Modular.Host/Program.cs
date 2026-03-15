@@ -13,6 +13,16 @@ using Modular.Modules.Courses.EventHandlers;
 var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
 builder.Services.AddFastEndpoints();
 
 builder.Services.AddCoursesModule(connectionString);
@@ -26,5 +36,6 @@ builder.Services.AddScoped<IDomainEventHandler<OrderCompletedEvent>, OrderComple
 
 var app = builder.Build();
 
+app.UseCors("AllowAll");
 app.UseFastEndpoints();
 app.Run();

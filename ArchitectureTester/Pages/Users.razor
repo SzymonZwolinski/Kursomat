@@ -1,0 +1,103 @@
+@page "/users"
+@inject ApiService ApiService
+
+<PageTitle>Users</PageTitle>
+
+<h1>Users</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>Create User</h3>
+        <div class="form-group mb-2">
+            <label>Id</label>
+            <input @bind="newUser.Id" class="form-control" />
+        </div>
+        <div class="form-group mb-2">
+            <label>First Name</label>
+            <input @bind="newUser.FirstName" class="form-control" />
+        </div>
+        <div class="form-group mb-2">
+            <label>Last Name</label>
+            <input @bind="newUser.LastName" class="form-control" />
+        </div>
+        <button class="btn btn-primary" @onclick="CreateUser">Create</button>
+
+        @if (createResult != null)
+        {
+            <div class="alert @(createResult.IsSuccess ? "alert-success" : "alert-danger") mt-3">
+                <p>Status: @(createResult.IsSuccess ? "Success" : "Failed")</p>
+                <p>Time: @createResult.ElapsedMilliseconds ms</p>
+                @if (!createResult.IsSuccess)
+                {
+                    <p>Error: @createResult.ErrorMessage</p>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="col-md-6">
+        <h3>Get Users</h3>
+        <button class="btn btn-secondary" @onclick="GetUsers">Load Users</button>
+
+        @if (getResult != null)
+        {
+            <div class="alert @(getResult.IsSuccess ? "alert-success" : "alert-danger") mt-3">
+                <p>Status: @(getResult.IsSuccess ? "Success" : "Failed")</p>
+                <p>Time: @getResult.ElapsedMilliseconds ms</p>
+                @if (!getResult.IsSuccess)
+                {
+                    <p>Error: @getResult.ErrorMessage</p>
+                }
+            </div>
+        }
+
+        @if (users != null && users.Any())
+        {
+            <ul class="list-group mt-3">
+                @foreach (var user in users)
+                {
+                    <li class="list-group-item">@user.FirstName @user.LastName (ID: @user.Id)</li>
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+@code {
+    private CreateUserDto newUser = new() { Id = Guid.NewGuid() };
+    private PerformanceResult? createResult;
+    private PerformanceResult<List<UserDto>>? getResult;
+    private List<UserDto>? users;
+
+    private async Task CreateUser()
+    {
+        createResult = await ApiService.PostAsync("api/users", newUser);
+        if (createResult.IsSuccess)
+        {
+            newUser = new CreateUserDto { Id = Guid.NewGuid() }; // reset form
+        }
+    }
+
+    private async Task GetUsers()
+    {
+        getResult = await ApiService.GetAsync<List<UserDto>>("api/users");
+        if (getResult.IsSuccess)
+        {
+            users = getResult.Data;
+        }
+    }
+
+    public class CreateUserDto
+    {
+        public Guid Id { get; set; }
+        public string FirstName { get; set; } = "";
+        public string LastName { get; set; } = "";
+    }
+
+    public class UserDto
+    {
+        public Guid Id { get; set; }
+        public string FirstName { get; set; } = "";
+        public string LastName { get; set; } = "";
+    }
+}

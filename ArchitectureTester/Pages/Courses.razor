@@ -1,0 +1,112 @@
+@page "/courses"
+@inject ApiService ApiService
+
+<PageTitle>Courses</PageTitle>
+
+<h1>Courses</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <h3>Create Course</h3>
+        <div class="form-group mb-2">
+            <label>Id</label>
+            <input @bind="newCourse.Id" class="form-control" />
+        </div>
+        <div class="form-group mb-2">
+            <label>Title</label>
+            <input @bind="newCourse.Title" class="form-control" />
+        </div>
+        <div class="form-group mb-2">
+            <label>Description</label>
+            <input @bind="newCourse.Description" class="form-control" />
+        </div>
+        <div class="form-group mb-2">
+            <label>Price</label>
+            <input @bind="newCourse.Price" type="number" step="0.01" class="form-control" />
+        </div>
+        <button class="btn btn-primary" @onclick="CreateCourse">Create</button>
+
+        @if (createResult != null)
+        {
+            <div class="alert @(createResult.IsSuccess ? "alert-success" : "alert-danger") mt-3">
+                <p>Status: @(createResult.IsSuccess ? "Success" : "Failed")</p>
+                <p>Time: @createResult.ElapsedMilliseconds ms</p>
+                @if (!createResult.IsSuccess)
+                {
+                    <p>Error: @createResult.ErrorMessage</p>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="col-md-6">
+        <h3>Get Courses</h3>
+        <button class="btn btn-secondary" @onclick="GetCourses">Load Courses</button>
+
+        @if (getResult != null)
+        {
+            <div class="alert @(getResult.IsSuccess ? "alert-success" : "alert-danger") mt-3">
+                <p>Status: @(getResult.IsSuccess ? "Success" : "Failed")</p>
+                <p>Time: @getResult.ElapsedMilliseconds ms</p>
+                @if (!getResult.IsSuccess)
+                {
+                    <p>Error: @getResult.ErrorMessage</p>
+                }
+            </div>
+        }
+
+        @if (courses != null && courses.Any())
+        {
+            <ul class="list-group mt-3">
+                @foreach (var course in courses)
+                {
+                    <li class="list-group-item">
+                        <strong>@course.Title</strong> - $@course.Price<br/>
+                        <small>@course.Description (ID: @course.Id)</small>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+</div>
+
+@code {
+    private CreateCourseDto newCourse = new() { Id = Guid.NewGuid() };
+    private PerformanceResult? createResult;
+    private PerformanceResult<List<CourseDto>>? getResult;
+    private List<CourseDto>? courses;
+
+    private async Task CreateCourse()
+    {
+        createResult = await ApiService.PostAsync("api/courses", newCourse);
+        if (createResult.IsSuccess)
+        {
+            newCourse = new CreateCourseDto { Id = Guid.NewGuid() }; // reset form
+        }
+    }
+
+    private async Task GetCourses()
+    {
+        getResult = await ApiService.GetAsync<List<CourseDto>>("api/courses");
+        if (getResult.IsSuccess)
+        {
+            courses = getResult.Data;
+        }
+    }
+
+    public class CreateCourseDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public decimal Price { get; set; }
+    }
+
+    public class CourseDto
+    {
+        public Guid Id { get; set; }
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public decimal Price { get; set; }
+    }
+}
