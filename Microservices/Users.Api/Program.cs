@@ -1,3 +1,4 @@
+using FastEndpoints.Security;
 using FastEndpoints;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
@@ -7,6 +8,8 @@ using Users.Api.Helpers.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddAuthenticationJwtBearer(s => s.SigningKey = "VerySecretKeyForJwtAuthentication12345!@#");
+builder.Services.AddAuthorization();
 builder.Services.AddFastEndpoints();
 
 var connectionString = builder.Configuration.GetConnectionString("UsersDb") ?? "Server=localhost,1433;Database=Microservices_Users;User Id=sa;Password=Your_password123;TrustServerCertificate=True;";
@@ -34,6 +37,9 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<UsersDbContext>();
     dbContext.Database.EnsureCreated();
 }
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseFastEndpoints();
 app.Run();
