@@ -3,7 +3,7 @@ using FastEndpoints;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Courses.Api.Data;
-using Courses.Api.EventHandlers;
+using Microservices.Courses.Api.EventHandlers;
 
 var builder = WebApplication.CreateBuilder(args);
 

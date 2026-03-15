@@ -31,11 +31,11 @@ public class GetCartEndpoint : Endpoint<GetCartRequest, GetCartResponse>
 
         if (cart is null)
         {
-            await SendNotFoundAsync(ct);
+            await HttpContext.Response.SendNotFoundAsync(cancellation: ct);
             return;
         }
 
         var items = cart.Items.Select(i => new CartItemDto(i.CourseId, i.Price)).ToList();
-        await SendAsync(new GetCartResponse(cart.UserId, items), cancellation: ct);
+        await HttpContext.Response.SendAsync(new GetCartResponse(cart.UserId, items), cancellation: ct);
     }
 }

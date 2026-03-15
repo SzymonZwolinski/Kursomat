@@ -1,8 +1,8 @@
 using FastEndpoints;
 using MassTransit;
 using Shared.Messaging.Events;
-using Sales.Api.Data;
-using Sales.Api.Entities;
+using Microservices.Sales.Api.Data;
+using Microservices.Sales.Api.Entities;
 
 namespace Sales.Api.Endpoints;
 
@@ -28,25 +28,18 @@ public class CreateOrderEndpoint : Endpoint<CreateOrderRequest, CreateOrderRespo
 
     public override async Task HandleAsync(CreateOrderRequest req, CancellationToken ct)
     {
-        var order = new Order
+        var order = new Microservices.Sales.Api.Entities.Order
         {
             Id = Guid.NewGuid(),
             UserId = req.UserId,
-            CourseIds = string.Join(",", req.CourseIds),
-            TotalPrice = req.TotalPrice,
-            CreatedAt = DateTime.UtcNow
+            TotalPrice = req.TotalPrice
         };
 
         _dbContext.Orders.Add(order);
         await _dbContext.SaveChangesAsync(ct);
 
-        await _publishEndpoint.Publish(new OrderCompletedEvent
-        {
-            OrderId = order.Id,
-            UserId = order.UserId,
-            CourseIds = req.CourseIds
-        }, ct);
+        await _publishEndpoint.Publish(new OrderCompletedEvent(order.UserId, order.Id, req.CourseIds), ct);
 
-        await SendAsync(new CreateOrderResponse(order.Id), 201, ct);
+        await HttpContext.Response.SendAsync(new CreateOrderResponse(order.Id), 201, cancellation: ct);
     }
 }
