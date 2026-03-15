@@ -29,7 +29,7 @@ public class RemoveFromCartEndpoint : Endpoint<RemoveFromCartRequest>
 
         if (cart is null)
         {
-            await SendNotFoundAsync(ct);
+            await HttpContext.Response.SendNotFoundAsync(cancellation: ct);
             return;
         }
 
@@ -40,6 +40,6 @@ public class RemoveFromCartEndpoint : Endpoint<RemoveFromCartRequest>
             await _dbContext.SaveChangesAsync(ct);
         }
 
-        await SendNoContentAsync(ct);
+        await HttpContext.Response.SendNoContentAsync(cancellation: ct);
     }
 }

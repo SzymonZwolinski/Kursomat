@@ -27,10 +27,10 @@ public class GetCourseEndpoint : Endpoint<GetCourseRequest, GetCourseResponse>
         var course = await _dbContext.Courses.FirstOrDefaultAsync(c => c.Id == req.Id, ct);
         if (course is null)
         {
-            await SendNotFoundAsync(ct);
+            await HttpContext.Response.SendNotFoundAsync(cancellation: ct);
             return;
         }
 
-        await SendAsync(new GetCourseResponse(course.Id, course.Title, course.Description, course.Price), cancellation: ct);
+        await HttpContext.Response.SendAsync(new GetCourseResponse(course.Id, course.Title, course.Description, course.Price), cancellation: ct);
     }
 }

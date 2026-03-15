@@ -3,7 +3,7 @@ using FastEndpoints;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Carts.Api.Data;
-using Carts.Api.EventHandlers;
+using Microservices.Carts.Api.EventHandlers;
 
 var builder = WebApplication.CreateBuilder(args);
 

@@ -42,7 +42,7 @@ namespace Microservices.Sales.Api.Endpoints
 
             if (order == null)
             {
-                await SendNotFoundAsync(cancellation: ct);
+                await HttpContext.Response.SendNotFoundAsync(cancellation: ct);
                 return;
             }
 
@@ -53,7 +53,7 @@ namespace Microservices.Sales.Api.Endpoints
                 TotalPrice = order.TotalPrice
             };
 
-            await SendOkAsync(response, cancellation: ct);
+            await HttpContext.Response.SendAsync(response, 200, cancellation: ct);
         }
     }
 }

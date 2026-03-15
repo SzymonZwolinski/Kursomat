@@ -9,5 +9,5 @@ public class CartItem
     public Guid CourseId { get; set; }
     public decimal Price { get; set; }
 
-    public Cart Cart { get; set; }
+    public Cart? Cart { get; set; }
 }

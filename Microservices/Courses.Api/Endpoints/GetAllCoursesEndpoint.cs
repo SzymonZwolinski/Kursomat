@@ -27,6 +27,6 @@ public class GetAllCoursesEndpoint : EndpointWithoutRequest<List<CourseDto>>
             .Select(c => new CourseDto(c.Id, c.Title, c.Description, c.Price))
             .ToListAsync(ct);
 
-        await SendAsync(courses, cancellation: ct);
+        await HttpContext.Response.SendAsync(courses, cancellation: ct);
     }
 }

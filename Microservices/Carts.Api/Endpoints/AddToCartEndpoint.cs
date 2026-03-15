@@ -46,6 +46,6 @@ public class AddToCartEndpoint : Endpoint<AddToCartRequest, AddToCartResponse>
         }
 
         await _dbContext.SaveChangesAsync(ct);
-        await SendAsync(new AddToCartResponse(cart.UserId), 200, ct);
+        await HttpContext.Response.SendAsync(new AddToCartResponse(cart.UserId), 200, cancellation: ct);
     }
 }

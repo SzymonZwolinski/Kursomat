@@ -27,6 +27,6 @@ public class GetAllUsersEndpoint : EndpointWithoutRequest<List<UserDto>>
             .Select(u => new UserDto(u.Id, u.Email, u.FullName))
             .ToListAsync(ct);
 
-        await SendAsync(users, cancellation: ct);
+        await HttpContext.Response.SendAsync(users, cancellation: ct);
     }
 }

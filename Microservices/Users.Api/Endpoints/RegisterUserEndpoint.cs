@@ -40,6 +40,6 @@ public class RegisterUserEndpoint : Endpoint<RegisterUserRequest, RegisterUserRe
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync(ct);
 
-        await SendAsync(new RegisterUserResponse(user.Id), 201, ct);
+        await HttpContext.Response.SendAsync(new RegisterUserResponse(user.Id), 201, cancellation: ct);
     }
 }

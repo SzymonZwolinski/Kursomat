@@ -35,6 +35,6 @@ public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, CreateCourseRe
         _dbContext.Courses.Add(course);
         await _dbContext.SaveChangesAsync(ct);
 
-        await SendAsync(new CreateCourseResponse(course.Id), 201, ct);
+        await HttpContext.Response.SendAsync(new CreateCourseResponse(course.Id), 201, cancellation: ct);
     }
 }

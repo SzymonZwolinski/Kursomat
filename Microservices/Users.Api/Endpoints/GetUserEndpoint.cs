@@ -28,10 +28,10 @@ public class GetUserEndpoint : Endpoint<GetUserRequest, GetUserResponse>
 
         if (user is null)
         {
-            await SendNotFoundAsync(ct);
+            await HttpContext.Response.SendNotFoundAsync(cancellation: ct);
             return;
         }
 
-        await SendAsync(new GetUserResponse(user.Id, user.Email, user.FullName), cancellation: ct);
+        await HttpContext.Response.SendAsync(new GetUserResponse(user.Id, user.Email, user.FullName), cancellation: ct);
     }
 }
