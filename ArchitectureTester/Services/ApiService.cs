@@ -14,6 +14,7 @@ public class ApiService
     private const string MicroservicesUrl = "http://localhost:8080";
 
     public ArchitectureType CurrentArchitecture { get; set; } = ArchitectureType.Monolith;
+    public string? Token { get; set; }
 
     public ApiService(HttpClient httpClient)
     {
@@ -37,8 +38,21 @@ public class ApiService
         return $"{baseUrl}/{endpoint.TrimStart('/')}";
     }
 
+    private void EnsureAuthorizationHeader()
+    {
+        if (!string.IsNullOrEmpty(Token))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Token);
+        }
+        else
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = null;
+        }
+    }
+
     public async Task<PerformanceResult<T>> GetAsync<T>(string endpoint)
     {
+        EnsureAuthorizationHeader();
         var result = new PerformanceResult<T>();
         var sw = Stopwatch.StartNew();
 
@@ -70,8 +84,43 @@ public class ApiService
         return result;
     }
 
+    public async Task<PerformanceResult<TResponse>> PostWithResponseAsync<TResponse, TRequest>(string endpoint, TRequest data)
+    {
+        EnsureAuthorizationHeader();
+        var result = new PerformanceResult<TResponse>();
+        var sw = Stopwatch.StartNew();
+
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync(BuildUrl(endpoint), data);
+            sw.Stop();
+            result.ElapsedMilliseconds = sw.ElapsedMilliseconds;
+
+            if (response.IsSuccessStatusCode)
+            {
+                result.Data = await response.Content.ReadFromJsonAsync<TResponse>();
+                result.IsSuccess = true;
+            }
+            else
+            {
+                result.IsSuccess = false;
+                result.ErrorMessage = $"Status: {response.StatusCode}. {await response.Content.ReadAsStringAsync()}";
+            }
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            result.ElapsedMilliseconds = sw.ElapsedMilliseconds;
+            result.IsSuccess = false;
+            result.ErrorMessage = ex.Message;
+        }
+
+        return result;
+    }
+
     public async Task<PerformanceResult> PostAsync<TRequest>(string endpoint, TRequest data)
     {
+        EnsureAuthorizationHeader();
         var result = new PerformanceResult();
         var sw = Stopwatch.StartNew();
 
@@ -104,6 +153,7 @@ public class ApiService
 
     public async Task<PerformanceResult> DeleteAsync(string endpoint)
     {
+        EnsureAuthorizationHeader();
         var result = new PerformanceResult();
         var sw = Stopwatch.StartNew();
 

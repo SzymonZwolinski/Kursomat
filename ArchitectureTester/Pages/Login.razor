@@ -1,0 +1,67 @@
+@page "/login"
+@using ArchitectureTester.Models
+@inject ApiService ApiService
+
+<PageTitle>Login</PageTitle>
+
+<h1>Login</h1>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="form-group mb-2">
+            <label>Login</label>
+            <input @bind="loginData.Login" class="form-control" />
+        </div>
+        <div class="form-group mb-2">
+            <label>Password</label>
+            <input @bind="loginData.Password" class="form-control" type="password" />
+        </div>
+        <button class="btn btn-primary" @onclick="LoginUser">Login</button>
+
+        @if (loginResult != null)
+        {
+            <div class="alert @(loginResult.IsSuccess ? "alert-success" : "alert-danger") mt-3">
+                <p>Status: @(loginResult.IsSuccess ? "Success" : "Failed")</p>
+                <p>Time: @loginResult.ElapsedMilliseconds ms</p>
+                @if (loginResult.IsSuccess)
+                {
+                    <p>Logged in successfully.</p>
+                }
+                else
+                {
+                    <p>Error: @loginResult.ErrorMessage</p>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private LoginDto loginData = new();
+    private PerformanceResult<LoginResponseDto>? loginResult;
+
+    private async Task LoginUser()
+    {
+        var endpoint = ApiService.CurrentArchitecture == ArchitectureType.Monolith
+            ? "api/account/login"
+            : "api/users/login";
+
+        loginResult = await ApiService.PostWithResponseAsync<LoginResponseDto, LoginDto>(endpoint, loginData);
+        if (loginResult.IsSuccess && loginResult.Data != null)
+        {
+            ApiService.Token = loginResult.Data.Token;
+            loginData = new LoginDto(); // reset form
+        }
+    }
+
+    public class LoginDto
+    {
+        public string Login { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+
+    public class LoginResponseDto
+    {
+        public string Token { get; set; } = "";
+    }
+}
