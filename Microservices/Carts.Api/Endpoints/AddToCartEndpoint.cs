@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Carts.Api.Data;
 using Carts.Api.Entities;
@@ -8,7 +9,9 @@ namespace Carts.Api.Endpoints;
 public record AddToCartRequest(Guid UserId, Guid CourseId, decimal Price);
 public record AddToCartResponse(Guid CartId);
 
-public class AddToCartEndpoint : Endpoint<AddToCartRequest, AddToCartResponse>
+[ApiController]
+[AllowAnonymous]
+public class AddToCartEndpoint : ControllerBase
 {
     private readonly CartsDbContext _dbContext;
 
@@ -17,21 +20,16 @@ public class AddToCartEndpoint : Endpoint<AddToCartRequest, AddToCartResponse>
         _dbContext = dbContext;
     }
 
-    public override void Configure()
-    {
-        Post("/api/carts/{UserId}/items");
-        AllowAnonymous();
-    }
-
-    public override async Task HandleAsync(AddToCartRequest req, CancellationToken ct)
+    [HttpPost("/api/carts/{UserId}/items")]
+    public async Task<IActionResult> HandleAsync([FromRoute] Guid UserId, [FromBody] AddToCartRequest req, CancellationToken ct)
     {
         var cart = await _dbContext.Carts
             .Include(c => c.Items)
-            .FirstOrDefaultAsync(c => c.UserId == req.UserId, ct);
+            .FirstOrDefaultAsync(c => c.UserId == UserId, ct);
 
         if (cart is null)
         {
-            cart = new Cart { UserId = req.UserId };
+            cart = new Cart { UserId = UserId };
             _dbContext.Carts.Add(cart);
         }
 
@@ -46,6 +44,6 @@ public class AddToCartEndpoint : Endpoint<AddToCartRequest, AddToCartResponse>
         }
 
         await _dbContext.SaveChangesAsync(ct);
-        await HttpContext.Response.SendAsync(new AddToCartResponse(cart.UserId), 200, cancellation: ct);
+        return Ok(new AddToCartResponse(cart.UserId));
     }
 }

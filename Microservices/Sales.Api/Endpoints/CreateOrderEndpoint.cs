@@ -1,5 +1,6 @@
-using FastEndpoints;
 using MassTransit;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Shared.Messaging.Events;
 using Microservices.Sales.Api.Data;
 using Microservices.Sales.Api.Entities;
@@ -9,7 +10,9 @@ namespace Sales.Api.Endpoints;
 public record CreateOrderRequest(Guid UserId, List<Guid> CourseIds, decimal TotalPrice);
 public record CreateOrderResponse(Guid OrderId);
 
-public class CreateOrderEndpoint : Endpoint<CreateOrderRequest, CreateOrderResponse>
+[ApiController]
+[AllowAnonymous]
+public class CreateOrderEndpoint : ControllerBase
 {
     private readonly SalesDbContext _dbContext;
     private readonly IPublishEndpoint _publishEndpoint;
@@ -20,13 +23,8 @@ public class CreateOrderEndpoint : Endpoint<CreateOrderRequest, CreateOrderRespo
         _publishEndpoint = publishEndpoint;
     }
 
-    public override void Configure()
-    {
-        Post("/api/orders");
-        AllowAnonymous();
-    }
-
-    public override async Task HandleAsync(CreateOrderRequest req, CancellationToken ct)
+    [HttpPost("/api/orders")]
+    public async Task<IActionResult> HandleAsync([FromBody] CreateOrderRequest req, CancellationToken ct)
     {
         var order = new Microservices.Sales.Api.Entities.Order
         {
@@ -40,6 +38,6 @@ public class CreateOrderEndpoint : Endpoint<CreateOrderRequest, CreateOrderRespo
 
         await _publishEndpoint.Publish(new OrderCompletedEvent(order.UserId, order.Id, req.CourseIds), ct);
 
-        await HttpContext.Response.SendAsync(new CreateOrderResponse(order.Id), 201, cancellation: ct);
+        return Created($"/api/orders/{order.Id}", new CreateOrderResponse(order.Id));
     }
 }

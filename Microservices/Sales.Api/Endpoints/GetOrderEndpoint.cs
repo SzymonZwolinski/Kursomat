@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microservices.Sales.Api.Data;
 using System;
@@ -19,7 +20,9 @@ namespace Microservices.Sales.Api.Endpoints
         public decimal TotalPrice { get; set; } = default!;
     }
 
-    public class GetOrderEndpoint : Endpoint<GetOrderRequest, OrderDto>
+    [ApiController]
+    [AllowAnonymous]
+    public class GetOrderEndpoint : ControllerBase
     {
         private readonly SalesDbContext _context;
 
@@ -28,13 +31,8 @@ namespace Microservices.Sales.Api.Endpoints
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Get("/api/orders/{OrderId}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(GetOrderRequest req, CancellationToken ct)
+        [HttpGet("/api/orders/{OrderId}")]
+        public async Task<IActionResult> HandleAsync([FromRoute] GetOrderRequest req, CancellationToken ct)
         {
             var order = await _context.Orders
                 .AsNoTracking()
@@ -42,8 +40,7 @@ namespace Microservices.Sales.Api.Endpoints
 
             if (order == null)
             {
-                await HttpContext.Response.SendNotFoundAsync(cancellation: ct);
-                return;
+                return NotFound();
             }
 
             var response = new OrderDto
@@ -53,7 +50,7 @@ namespace Microservices.Sales.Api.Endpoints
                 TotalPrice = order.TotalPrice
             };
 
-            await HttpContext.Response.SendAsync(response, 200, cancellation: ct);
+            return Ok(response);
         }
     }
 }

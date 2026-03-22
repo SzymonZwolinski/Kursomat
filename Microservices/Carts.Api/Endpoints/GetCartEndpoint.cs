@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Carts.Api.Data;
 
@@ -8,7 +9,9 @@ public record GetCartRequest(Guid UserId);
 public record GetCartResponse(Guid UserId, List<CartItemDto> Items);
 public record CartItemDto(Guid CourseId, decimal Price);
 
-public class GetCartEndpoint : Endpoint<GetCartRequest, GetCartResponse>
+[ApiController]
+[AllowAnonymous]
+public class GetCartEndpoint : ControllerBase
 {
     private readonly CartsDbContext _dbContext;
 
@@ -17,13 +20,8 @@ public class GetCartEndpoint : Endpoint<GetCartRequest, GetCartResponse>
         _dbContext = dbContext;
     }
 
-    public override void Configure()
-    {
-        Get("/api/carts/{UserId}");
-        AllowAnonymous();
-    }
-
-    public override async Task HandleAsync(GetCartRequest req, CancellationToken ct)
+    [HttpGet("/api/carts/{UserId}")]
+    public async Task<IActionResult> HandleAsync([FromRoute] GetCartRequest req, CancellationToken ct)
     {
         var cart = await _dbContext.Carts
             .Include(c => c.Items)
@@ -31,11 +29,10 @@ public class GetCartEndpoint : Endpoint<GetCartRequest, GetCartResponse>
 
         if (cart is null)
         {
-            await HttpContext.Response.SendNotFoundAsync(cancellation: ct);
-            return;
+            return NotFound();
         }
 
         var items = cart.Items.Select(i => new CartItemDto(i.CourseId, i.Price)).ToList();
-        await HttpContext.Response.SendAsync(new GetCartResponse(cart.UserId, items), cancellation: ct);
+        return Ok(new GetCartResponse(cart.UserId, items));
     }
 }

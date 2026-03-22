@@ -1,15 +1,27 @@
-using FastEndpoints.Security;
-using FastEndpoints;
 using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Courses.Api.Data;
 using Microservices.Courses.Api.EventHandlers;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddAuthenticationJwtBearer(s => s.SigningKey = "VerySecretKeyForJwtAuthentication12345!@#");
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("VerySecretKeyForJwtAuthentication12345!@#")),
+            ValidateIssuer = false,
+            ValidateAudience = false
+        };
+    });
+
 builder.Services.AddAuthorization();
-builder.Services.AddFastEndpoints();
+builder.Services.AddControllers();
 
 var connectionString = builder.Configuration.GetConnectionString("CoursesDb") ?? "Server=localhost,1433;Database=Microservices_Courses;User Id=sa;Password=Your_password123;TrustServerCertificate=True;";
 builder.Services.AddDbContext<CoursesDbContext>(options =>
@@ -44,5 +56,5 @@ using (var scope = app.Services.CreateScope())
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.UseFastEndpoints();
+app.MapControllers();
 app.Run();
