@@ -1,6 +1,10 @@
-﻿using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Monolit.DataBase;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.Courses
 {
@@ -9,7 +13,9 @@ namespace Monolit.Features.Courses
         public Guid Id { get; set; }
     }
 
-    public class GetCourseEndpoint : Endpoint<GetCourseRequest, CourseDto>
+    [ApiController]
+    [Route("api/courses")]
+    public class GetCourseEndpoint : ControllerBase
     {
         private readonly MonolitDbContext _context;
 
@@ -18,22 +24,17 @@ namespace Monolit.Features.Courses
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Get("/api/courses/{Id}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(GetCourseRequest req, CancellationToken ct)
+        [HttpGet("{Id}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid Id, CancellationToken ct)
         {
             var course = await _context.Courses
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == req.Id, ct);
+                .FirstOrDefaultAsync(c => c.Id == Id, ct);
 
             if (course == null)
             {
-                await Send.NotFoundAsync(ct);
-                return;
+                return NotFound();
             }
 
             var response = new CourseDto
@@ -44,7 +45,7 @@ namespace Monolit.Features.Courses
                 Price = course.Price
             };
 
-            await Send.OkAsync(response, cancellation: ct);
+            return Ok(response);
         }
     }
 }

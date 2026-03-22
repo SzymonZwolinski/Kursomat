@@ -1,12 +1,18 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Monolit.Helpers.Repositories.Interfaces;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.User.Get
 {
     public record GetUserRequest(Guid Id);
     public record GetUserResponse(Guid Id, string Login, string Email);
 
-    public class GetUser : Endpoint<GetUserRequest, GetUserResponse>
+    [ApiController]
+    [Route("api/user")]
+    public class GetUser : ControllerBase
     {
         private readonly IUserRepository _userRepository;
 
@@ -15,23 +21,18 @@ namespace Monolit.Features.User.Get
             _userRepository = userRepository;
         }
 
-        public override void Configure()
+        [HttpGet("{id}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid id, CancellationToken ct)
         {
-            Get("/api/user/{id}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(GetUserRequest req, CancellationToken ct)
-        {
-            var user = await _userRepository.GetUserByIdAsync(req.Id, ct);
+            var user = await _userRepository.GetUserByIdAsync(id, ct);
             if (user is null)
             {
-                await Send.NotFoundAsync(ct);
-                return;
+                return NotFound();
             }
 
             var response = new GetUserResponse(user.Id, user.Login, user.Email);
-            await Send.OkAsync(response, ct);
+            return Ok(response);
         }
     }
 }

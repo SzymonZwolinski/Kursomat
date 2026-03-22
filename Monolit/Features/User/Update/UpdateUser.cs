@@ -1,11 +1,17 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Monolit.Helpers.Repositories.Interfaces;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.User.Update
 {
     public record UpdateUserRequest(string Login, string Email, string? Password);
 
-    public class UpdateUser : Endpoint<UpdateUserRequest>
+    [ApiController]
+    [Route("api/user")]
+    public class UpdateUser : ControllerBase
     {
         private readonly IUserRepository _userRepository;
 
@@ -14,15 +20,10 @@ namespace Monolit.Features.User.Update
             _userRepository = userRepository;
         }
 
-        public override void Configure()
+        [HttpPut("{id}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid id, [FromBody] UpdateUserRequest req, CancellationToken ct)
         {
-            Put("/api/user/{id}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(UpdateUserRequest req, CancellationToken ct)
-        {
-            var id = Route<Guid>("id");
             var user = new Entities.User(req.Login, req.Password ?? string.Empty, req.Email)
             {
                 Id = id
@@ -31,11 +32,10 @@ namespace Monolit.Features.User.Update
             var result = await _userRepository.UpdateUserAsync(user, ct);
             if (!result)
             {
-                await Send.NotFoundAsync(ct);
-                return;
+                return NotFound();
             }
 
-            await Send.OkAsync(ct);
+            return Ok();
         }
     }
 }

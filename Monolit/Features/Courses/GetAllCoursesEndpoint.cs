@@ -1,11 +1,19 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Monolit.DataBase;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.Courses
 {
-    public class GetAllCoursesEndpoint : EndpointWithoutRequest<List<CourseDto>>
+    [ApiController]
+    [Route("api/courses")]
+    public class GetAllCoursesEndpoint : ControllerBase
     {
         private readonly MonolitDbContext _context;
 
@@ -14,13 +22,9 @@ namespace Monolit.Features.Courses
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Get("/api/courses");
-            AllowAnonymous(); // Or use Claims("UserId") if you want to require authentication
-        }
-
-        public override async Task HandleAsync(CancellationToken ct)
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandleAsync(CancellationToken ct)
         {
             var userIdStr = User.FindFirstValue("UserId");
             Guid.TryParse(userIdStr, out var userId);
@@ -41,7 +45,7 @@ namespace Monolit.Features.Courses
                 })
                 .ToListAsync(ct);
 
-            await Send.OkAsync(courses, cancellation: ct);
+            return Ok(courses);
         }
     }
 }

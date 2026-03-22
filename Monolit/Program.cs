@@ -1,5 +1,4 @@
 
-using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 using Monolit.DataBase;
 using Monolit.DependencyInjection;
@@ -29,7 +28,6 @@ namespace Monolit
 				});
 			});
 
-			builder.Services.AddFastEndpoints();
 			var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 			builder.Services.AddDbContext<MonolitDbContext>(options =>
@@ -44,7 +42,6 @@ namespace Monolit
 			app.UseSwagger();
 			app.UseSwaggerUI();
 			app.UseCors("AllowAll");
-			app.UseFastEndpoints();
 
 			app.UseHttpsRedirection();
 

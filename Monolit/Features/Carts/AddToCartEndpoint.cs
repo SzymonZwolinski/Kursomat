@@ -1,12 +1,20 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Monolit.DataBase;
 using Monolit.Entities;
+using System;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.Carts
 {
-    public class AddToCartEndpoint : Endpoint<AddToCartRequest>
+    [ApiController]
+    [Route("api/cart")]
+    [Authorize]
+    public class AddToCartEndpoint : ControllerBase
     {
         private readonly MonolitDbContext _context;
 
@@ -15,15 +23,14 @@ namespace Monolit.Features.Carts
             _context = context;
         }
 
-        public override void Configure()
+        [HttpPost("items")]
+        public async Task<IActionResult> HandleAsync([FromBody] AddToCartRequest req, CancellationToken ct)
         {
-            Post("/api/cart/items");
-            Claims("UserId");
-        }
-
-        public override async Task HandleAsync(AddToCartRequest req, CancellationToken ct)
-        {
-            var userId = Guid.Parse(User.FindFirstValue("UserId") ?? Guid.Empty.ToString());
+            var userIdStr = User.FindFirstValue("UserId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
 
             var cart = await _context.Carts
                 .Include(c => c.Items)
@@ -35,11 +42,10 @@ namespace Monolit.Features.Carts
                 _context.Carts.Add(cart);
             }
 
-            var course = await _context.Courses.FindAsync(req.CourseId);
+            var course = await _context.Courses.FindAsync(new object[] { req.CourseId }, ct);
             if (course == null)
             {
-                await Send.NotFoundAsync(ct);
-                return;
+                return NotFound();
             }
 
             if (!cart.Items.Any(i => i.CourseId == req.CourseId))
@@ -48,7 +54,7 @@ namespace Monolit.Features.Carts
                 await _context.SaveChangesAsync(ct);
             }
 
-            await Send.OkAsync(ct);
+            return Ok();
         }
     }
 

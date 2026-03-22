@@ -1,13 +1,19 @@
-﻿using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Monolit.Helpers.Etc.Interfaces;
 using Monolit.Helpers.Repositories.Interfaces;
+using System.Threading;
+using System.Threading.Tasks;
+using System;
 
 namespace Monolit.Features.Account.Create
 {
     public record CreateRequest(string Login, string Password, string Email);
 	public record CreateResponse(Guid UserId);
 
-	public class CreateUser : Endpoint<CreateRequest, CreateResponse>
+	[ApiController]
+	[Route("api/account")]
+	public class CreateUser : ControllerBase
 	{
 		private readonly IUserRepository _accountRepository;
 		private readonly IPasswordHasher _passwordHasher;
@@ -18,13 +24,9 @@ namespace Monolit.Features.Account.Create
 			_passwordHasher = passwordHasher;
 		}
 
-		public override void Configure()
-		{
-			Post("/api/account/create");
-			AllowAnonymous();
-		}
-
-		public override async Task HandleAsync(CreateRequest req, CancellationToken ct)
+		[HttpPost("create")]
+		[AllowAnonymous]
+		public async Task<IActionResult> HandleAsync([FromBody] CreateRequest req, CancellationToken ct)
 		{
 			var passwordHash = _passwordHasher.HashPassword(req.Password);
 			var user = new Entities.User(req.Login, passwordHash, req.Email);
@@ -32,7 +34,7 @@ namespace Monolit.Features.Account.Create
 			var userId = await _accountRepository.CreateAccountAsync(user, ct);
 			var response = new CreateResponse(UserId: userId);
 
-			await Send.OkAsync(response, ct);
+			return Ok(response);
 		}
 	}
 }

@@ -1,6 +1,12 @@
-﻿using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Monolit.DataBase;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.Orders
 {
@@ -22,7 +28,9 @@ namespace Monolit.Features.Orders
         public List<OrderItemDto> Items { get; set; } = new();
     }
 
-    public class GetOrderEndpoint : Endpoint<GetOrderRequest, OrderDto>
+    [ApiController]
+    [Route("api/orders")]
+    public class GetOrderEndpoint : ControllerBase
     {
         private readonly MonolitDbContext _context;
 
@@ -31,24 +39,19 @@ namespace Monolit.Features.Orders
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Get("/api/orders/{Id}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(GetOrderRequest req, CancellationToken ct)
+        [HttpGet("{Id}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid Id, CancellationToken ct)
         {
             var order = await _context.Orders
                 .Include(o => o.Items)
                 .ThenInclude(oi => oi.Course)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(o => o.Id == req.Id, ct);
+                .FirstOrDefaultAsync(o => o.Id == Id, ct);
 
             if (order == null)
             {
-                await Send.NotFoundAsync(ct);
-                return;
+                return NotFound();
             }
 
             var response = new OrderDto
@@ -62,7 +65,7 @@ namespace Monolit.Features.Orders
                 }).ToList()
             };
 
-            await Send.OkAsync(response, cancellation: ct);
+            return Ok(response);
         }
     }
 }

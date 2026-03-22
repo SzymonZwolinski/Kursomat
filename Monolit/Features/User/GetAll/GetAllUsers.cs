@@ -1,12 +1,19 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Monolit.Features.User.Get;
 using Monolit.Helpers.Repositories.Interfaces;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.User.GetAll
 {
     public record GetAllUsersResponse(IEnumerable<GetUserResponse> Users);
 
-    public class GetAllUsers : EndpointWithoutRequest<GetAllUsersResponse>
+    [ApiController]
+    [Route("api/user")]
+    public class GetAllUsers : ControllerBase
     {
         private readonly IUserRepository _userRepository;
 
@@ -15,17 +22,13 @@ namespace Monolit.Features.User.GetAll
             _userRepository = userRepository;
         }
 
-        public override void Configure()
-        {
-            Get("/api/user");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(CancellationToken ct)
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandleAsync(CancellationToken ct)
         {
             var users = await _userRepository.GetAllUsersAsync(ct);
             var response = new GetAllUsersResponse(users.Select(x => new GetUserResponse(x.Id, x.Login, x.Email)));
-            await Send.OkAsync(response, ct);
+            return Ok(response);
         }
     }
 }
