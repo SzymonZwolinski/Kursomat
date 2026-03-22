@@ -1,17 +1,13 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modular.Modules.Sales.Data;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Sales.Endpoints
 {
-    public class GetOrderRequest
-    {
-        public Guid OrderId { get; set; } = default!;
-    }
-
     public class OrderDto
     {
         public Guid Id { get; set; } = default!;
@@ -19,7 +15,9 @@ namespace Modular.Modules.Sales.Endpoints
         public decimal TotalPrice { get; set; } = default!;
     }
 
-    internal class GetOrderEndpoint : Endpoint<GetOrderRequest, OrderDto>
+    [ApiController]
+    [AllowAnonymous]
+    public class GetOrderEndpoint : ControllerBase
     {
         private readonly SalesDbContext _context;
 
@@ -28,22 +26,16 @@ namespace Modular.Modules.Sales.Endpoints
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Get("/api/orders/{OrderId}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(GetOrderRequest req, CancellationToken ct)
+        [HttpGet("/api/orders/{OrderId}")]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid OrderId, CancellationToken ct)
         {
             var order = await _context.Orders
                 .AsNoTracking()
-                .FirstOrDefaultAsync(o => o.Id == req.OrderId, ct);
+                .FirstOrDefaultAsync(o => o.Id == OrderId, ct);
 
             if (order == null)
             {
-                await Send.NotFoundAsync(cancellation: ct);
-                return;
+                return NotFound();
             }
 
             var response = new OrderDto
@@ -53,7 +45,7 @@ namespace Modular.Modules.Sales.Endpoints
                 TotalPrice = order.TotalPrice
             };
 
-            await Send.OkAsync(response, cancellation: ct);
+            return Ok(response);
         }
     }
 }

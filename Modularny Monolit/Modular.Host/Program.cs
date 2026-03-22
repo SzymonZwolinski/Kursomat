@@ -1,4 +1,3 @@
-using FastEndpoints;
 using Modular.Modules.Courses;
 using Modular.Modules.Users;
 using Modular.Modules.Sales;
@@ -23,7 +22,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddFastEndpoints();
+builder.Services.AddControllers();
 
 builder.Services.AddCoursesModule(connectionString);
 builder.Services.AddUsersModule(connectionString);
@@ -37,5 +36,5 @@ builder.Services.AddScoped<IDomainEventHandler<OrderCompletedEvent>, OrderComple
 var app = builder.Build();
 
 app.UseCors("AllowAll");
-app.UseFastEndpoints();
+app.MapControllers();
 app.Run();

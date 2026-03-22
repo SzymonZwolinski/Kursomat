@@ -1,19 +1,17 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modular.Modules.Carts.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Carts.Endpoints
 {
-    public class GetCartRequest
-    {
-        public Guid UserId { get; set; } = default!;
-    }
-
-    internal class GetCartEndpoint : Endpoint<GetCartRequest>
+    [ApiController]
+    [AllowAnonymous]
+    public class GetCartEndpoint : ControllerBase
     {
         private readonly CartsDbContext _context;
 
@@ -22,22 +20,16 @@ namespace Modular.Modules.Carts.Endpoints
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Get("/api/carts/{UserId}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(GetCartRequest req, CancellationToken ct)
+        [HttpGet("/api/carts/{UserId}")]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid UserId, CancellationToken ct)
         {
             var cart = await _context.Carts
                 .Include(c => c.Items)
-                .FirstOrDefaultAsync(c => c.UserId == req.UserId, ct);
+                .FirstOrDefaultAsync(c => c.UserId == UserId, ct);
 
             if (cart == null)
             {
-                await Send.NotFoundAsync(cancellation: ct);
-                return;
+                return NotFound();
             }
 
             var response = new
@@ -46,7 +38,7 @@ namespace Modular.Modules.Carts.Endpoints
                 Items = cart.Items.Select(i => new { i.Id, i.CourseId }).ToList()
             };
 
-            await Send.OkAsync(response, cancellation: ct);
+            return Ok(response);
         }
     }
 }

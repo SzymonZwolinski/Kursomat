@@ -1,4 +1,4 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modular.Modules.Carts.Data;
 using Modular.Modules.Carts.Entities;
@@ -6,6 +6,8 @@ using Modular.Modules.Courses.Contracts;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
+using Microsoft.AspNetCore.Authorization;
+using System.Linq;
 
 namespace Modular.Modules.Carts.Endpoints
 {
@@ -15,7 +17,9 @@ namespace Modular.Modules.Carts.Endpoints
         public Guid CourseId { get; set; } = default!;
     }
 
-    internal class AddToCartEndpoint : Endpoint<AddToCartRequest>
+    [ApiController]
+    [AllowAnonymous]
+    public class AddToCartEndpoint : ControllerBase
     {
         private readonly CartsDbContext _context;
         private readonly ICoursesApi _coursesApi;
@@ -26,19 +30,13 @@ namespace Modular.Modules.Carts.Endpoints
             _coursesApi = coursesApi;
         }
 
-        public override void Configure()
-        {
-            Post("/api/carts/items");
-            AllowAnonymous(); // Simplify authentication for modular monolith reflection
-        }
-
-        public override async Task HandleAsync(AddToCartRequest req, CancellationToken ct)
+        [HttpPost("/api/carts/items")]
+        public async Task<IActionResult> HandleAsync([FromBody] AddToCartRequest req, CancellationToken ct)
         {
             var course = await _coursesApi.GetCourseAsync(req.CourseId, ct);
             if (course == null)
             {
-                await Send.NotFoundAsync(cancellation: ct);
-                return;
+                return NotFound();
             }
 
             var cart = await _context.Carts
@@ -57,7 +55,7 @@ namespace Modular.Modules.Carts.Endpoints
                 await _context.SaveChangesAsync(ct);
             }
 
-            await Send.OkAsync(new { CartId = cart.Id }, cancellation: ct);
+            return Ok(new { CartId = cart.Id });
         }
     }
 }

@@ -1,17 +1,13 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modular.Modules.Users.Data;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Users.Endpoints
 {
-    public class GetUserRequest
-    {
-        public Guid UserId { get; set; } = default!;
-    }
-
     public class UserDto
     {
         public Guid Id { get; set; } = default!;
@@ -19,7 +15,9 @@ namespace Modular.Modules.Users.Endpoints
         public string Email { get; set; } = default!;
     }
 
-    internal class GetUserEndpoint : Endpoint<GetUserRequest, UserDto>
+    [ApiController]
+    [AllowAnonymous]
+    public class GetUserEndpoint : ControllerBase
     {
         private readonly UsersDbContext _context;
 
@@ -28,30 +26,24 @@ namespace Modular.Modules.Users.Endpoints
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Get("/api/users/{UserId}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(GetUserRequest req, CancellationToken ct)
+        [HttpGet("/api/users/{UserId}")]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid UserId, CancellationToken ct)
         {
             var user = await _context.Users
                 .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Id == req.UserId, ct);
+                .FirstOrDefaultAsync(u => u.Id == UserId, ct);
 
             if (user == null)
             {
-                await Send.NotFoundAsync(cancellation: ct);
-                return;
+                return NotFound();
             }
 
-            await Send.OkAsync(new UserDto
+            return Ok(new UserDto
             {
                 Id = user.Id,
                 Login = user.Login,
                 Email = user.Email
-            }, cancellation: ct);
+            });
         }
     }
 }

@@ -1,37 +1,29 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Courses.Endpoints
 {
-    public class StreamVideoRequest
+    [ApiController]
+    [AllowAnonymous]
+    public class StreamVideoEndpoint : ControllerBase
     {
-        public Guid CourseId { get; set; } = default!;
-    }
-
-    internal class StreamVideoEndpoint : Endpoint<StreamVideoRequest>
-    {
-        public override void Configure()
+        [HttpGet("/api/courses/{CourseId}/video")]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid CourseId, CancellationToken ct)
         {
-            Get("/api/courses/{CourseId}/video");
-            AllowAnonymous();
-        }
+            var filePath = Path.Combine(Path.GetTempPath(), $"{CourseId}.mp4");
 
-        public override async Task HandleAsync(StreamVideoRequest req, CancellationToken ct)
-        {
-            var filePath = Path.Combine(Path.GetTempPath(), $"{req.CourseId}.mp4");
-
-            if (!File.Exists(filePath))
+            if (!System.IO.File.Exists(filePath))
             {
-                await Send.NotFoundAsync(cancellation: ct);
-                return;
+                return NotFound();
             }
 
             var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            await Send.StreamAsync(fileStream, fileName: $"{req.CourseId}.mp4", contentType: "video/mp4", enableRangeProcessing: true, cancellation: ct);
+            return File(fileStream, "video/mp4", enableRangeProcessing: true);
         }
     }
 }

@@ -4,7 +4,7 @@ using System.Reflection.Emit;
 
 namespace Modular.Modules.Users.Data
 {
-    internal class UsersDbContext : DbContext
+    public class UsersDbContext : DbContext
     {
         public DbSet<Entities.User> Users { get; set; }
 

@@ -1,18 +1,16 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modular.Modules.Users.Data;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Users.Endpoints
 {
-    public class DeleteUserRequest
-    {
-        public Guid UserId { get; set; } = default!;
-    }
-
-    internal class DeleteUserEndpoint : Endpoint<DeleteUserRequest>
+    [ApiController]
+    [AllowAnonymous]
+    public class DeleteUserEndpoint : ControllerBase
     {
         private readonly UsersDbContext _context;
 
@@ -21,26 +19,20 @@ namespace Modular.Modules.Users.Endpoints
             _context = context;
         }
 
-        public override void Configure()
+        [HttpDelete("/api/users/{UserId}")]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid UserId, CancellationToken ct)
         {
-            Delete("/api/users/{UserId}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(DeleteUserRequest req, CancellationToken ct)
-        {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == req.UserId, ct);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == UserId, ct);
 
             if (user == null)
             {
-                await Send.NotFoundAsync(cancellation: ct);
-                return;
+                return NotFound();
             }
 
             _context.Users.Remove(user);
             await _context.SaveChangesAsync(ct);
 
-            await Send.OkAsync(cancellation: ct);
+            return Ok();
         }
     }
 }

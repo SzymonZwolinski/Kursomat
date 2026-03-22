@@ -1,4 +1,4 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Modular.Modules.Carts.Contracts;
 using Modular.Modules.Courses.Contracts;
 using Modular.Modules.Sales.Data;
@@ -8,6 +8,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Sales.Endpoints
 {
@@ -16,7 +17,9 @@ namespace Modular.Modules.Sales.Endpoints
         public Guid UserId { get; set; } = default!;
     }
 
-    internal class CreateOrderEndpoint : Endpoint<CreateOrderRequest>
+    [ApiController]
+    [AllowAnonymous]
+    public class CreateOrderEndpoint : ControllerBase
     {
         private readonly SalesDbContext _context;
         private readonly ICartsApi _cartsApi;
@@ -35,20 +38,14 @@ namespace Modular.Modules.Sales.Endpoints
             _dispatcher = dispatcher;
         }
 
-        public override void Configure()
-        {
-            Post("/api/orders");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(CreateOrderRequest req, CancellationToken ct)
+        [HttpPost("/api/orders")]
+        public async Task<IActionResult> HandleAsync([FromBody] CreateOrderRequest req, CancellationToken ct)
         {
             var cart = await _cartsApi.GetCartAsync(req.UserId, ct);
 
             if (cart == null || !cart.CourseIds.Any())
             {
-                await Send.NotFoundAsync(cancellation: ct);
-                return;
+                return NotFound();
             }
 
             decimal totalPrice = 0;
@@ -73,7 +70,7 @@ namespace Modular.Modules.Sales.Endpoints
 
             await _dispatcher.DispatchAsync(new OrderCompletedEvent(req.UserId, order.Id, cart.CourseIds), ct);
 
-            await Send.OkAsync(new { OrderId = order.Id }, cancellation: ct);
+            return Ok(new { OrderId = order.Id });
         }
     }
 }

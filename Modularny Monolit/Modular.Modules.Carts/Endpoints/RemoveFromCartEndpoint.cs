@@ -1,20 +1,17 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modular.Modules.Carts.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Carts.Endpoints
 {
-    public class RemoveFromCartRequest
-    {
-        public Guid UserId { get; set; } = default!;
-        public Guid CourseId { get; set; } = default!;
-    }
-
-    internal class RemoveFromCartEndpoint : Endpoint<RemoveFromCartRequest>
+    [ApiController]
+    [AllowAnonymous]
+    public class RemoveFromCartEndpoint : ControllerBase
     {
         private readonly CartsDbContext _context;
 
@@ -23,32 +20,26 @@ namespace Modular.Modules.Carts.Endpoints
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Delete("/api/carts/{UserId}/items/{CourseId}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(RemoveFromCartRequest req, CancellationToken ct)
+        [HttpDelete("/api/carts/{UserId}/items/{CourseId}")]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid UserId, [FromRoute] Guid CourseId, CancellationToken ct)
         {
             var cart = await _context.Carts
                 .Include(c => c.Items)
-                .FirstOrDefaultAsync(c => c.UserId == req.UserId, ct);
+                .FirstOrDefaultAsync(c => c.UserId == UserId, ct);
 
             if (cart == null)
             {
-                await Send.NotFoundAsync(cancellation: ct);
-                return;
+                return NotFound();
             }
 
-            var item = cart.Items.FirstOrDefault(i => i.CourseId == req.CourseId);
+            var item = cart.Items.FirstOrDefault(i => i.CourseId == CourseId);
             if (item != null)
             {
                 cart.Items.Remove(item);
                 await _context.SaveChangesAsync(ct);
             }
 
-            await Send.OkAsync(cancellation: ct);
+            return Ok();
         }
     }
 }

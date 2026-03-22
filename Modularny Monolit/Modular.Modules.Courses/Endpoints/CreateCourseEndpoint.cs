@@ -1,9 +1,10 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Modular.Modules.Courses.Data;
 using Modular.Modules.Courses.Entities;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Courses.Endpoints
 {
@@ -22,7 +23,9 @@ namespace Modular.Modules.Courses.Endpoints
         public decimal Price { get; set; } = default!;
     }
 
-    internal class CreateCourseEndpoint : Endpoint<CreateCourseRequest, CourseDto>
+    [ApiController]
+    [AllowAnonymous]
+    public class CreateCourseEndpoint : ControllerBase
     {
         private readonly CoursesDbContext _context;
 
@@ -31,13 +34,8 @@ namespace Modular.Modules.Courses.Endpoints
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Post("/api/courses");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(CreateCourseRequest req, CancellationToken ct)
+        [HttpPost("/api/courses")]
+        public async Task<IActionResult> HandleAsync([FromBody] CreateCourseRequest req, CancellationToken ct)
         {
             var course = new Course
             {
@@ -58,7 +56,7 @@ namespace Modular.Modules.Courses.Endpoints
                 Price = course.Price
             };
 
-            await Send.OkAsync(response, cancellation: ct);
+            return Ok(response);
         }
     }
 }
