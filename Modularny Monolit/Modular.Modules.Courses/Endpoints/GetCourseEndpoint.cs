@@ -1,18 +1,16 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modular.Modules.Courses.Data;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Courses.Endpoints
 {
-    public class GetCourseRequest
-    {
-        public Guid CourseId { get; set; } = default!;
-    }
-
-    internal class GetCourseEndpoint : Endpoint<GetCourseRequest, CourseDto>
+    [ApiController]
+    [AllowAnonymous]
+    public class GetCourseEndpoint : ControllerBase
     {
         private readonly CoursesDbContext _context;
 
@@ -21,31 +19,25 @@ namespace Modular.Modules.Courses.Endpoints
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Get("/api/courses/{CourseId}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(GetCourseRequest req, CancellationToken ct)
+        [HttpGet("/api/courses/{CourseId}")]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid CourseId, CancellationToken ct)
         {
             var course = await _context.Courses
                 .AsNoTracking()
-                .FirstOrDefaultAsync(c => c.Id == req.CourseId, ct);
+                .FirstOrDefaultAsync(c => c.Id == CourseId, ct);
 
             if (course == null)
             {
-                await Send.NotFoundAsync(cancellation: ct);
-                return;
+                return NotFound();
             }
 
-            await Send.OkAsync(new CourseDto
+            return Ok(new CourseDto
             {
                 Id = course.Id,
                 Name = course.Name,
                 Description = course.Description,
                 Price = course.Price
-            }, cancellation: ct);
+            });
         }
     }
 }

@@ -1,20 +1,17 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Modular.Modules.Courses.Data;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Courses.Endpoints
 {
-    public class UploadVideoRequest
-    {
-        public Guid CourseId { get; set; } = default!;
-        public IFormFile File { get; set; } = default!;
-    }
-
-    internal class UploadVideoEndpoint : Endpoint<UploadVideoRequest>
+    [ApiController]
+    [AllowAnonymous]
+    public class UploadVideoEndpoint : ControllerBase
     {
         private readonly CoursesDbContext _context;
 
@@ -23,30 +20,23 @@ namespace Modular.Modules.Courses.Endpoints
             _context = context;
         }
 
-        public override void Configure()
+        [HttpPost("/api/courses/{CourseId}/video")]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid CourseId, [FromForm] IFormFile file, CancellationToken ct)
         {
-            Post("/api/courses/{CourseId}/video");
-            AllowFileUploads();
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(UploadVideoRequest req, CancellationToken ct)
-        {
-            var course = await _context.Courses.FindAsync(new object[] { req.CourseId }, ct);
+            var course = await _context.Courses.FindAsync(new object[] { CourseId }, ct);
             if (course == null)
             {
-                await Send.NotFoundAsync(cancellation: ct);
-                return;
+                return NotFound();
             }
 
-            var filePath = Path.Combine(Path.GetTempPath(), $"{req.CourseId}.mp4");
+            var filePath = Path.Combine(Path.GetTempPath(), $"{CourseId}.mp4");
 
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                await req.File.CopyToAsync(stream, ct);
+                await file.CopyToAsync(stream, ct);
             }
 
-            await Send.OkAsync(ct);
+            return Ok();
         }
     }
 }

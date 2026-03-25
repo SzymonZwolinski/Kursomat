@@ -1,14 +1,17 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modular.Modules.Users.Data;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Users.Endpoints
 {
-    internal class GetAllUsersEndpoint : EndpointWithoutRequest<List<UserDto>>
+    [ApiController]
+    [AllowAnonymous]
+    public class GetAllUsersEndpoint : ControllerBase
     {
         private readonly UsersDbContext _context;
 
@@ -17,13 +20,8 @@ namespace Modular.Modules.Users.Endpoints
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Get("/api/users");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(CancellationToken ct)
+        [HttpGet("/api/users")]
+        public async Task<IActionResult> HandleAsync(CancellationToken ct)
         {
             var users = await _context.Users
                 .AsNoTracking()
@@ -35,7 +33,7 @@ namespace Modular.Modules.Users.Endpoints
                 })
                 .ToListAsync(ct);
 
-            await Send.OkAsync(users, cancellation: ct);
+            return Ok(users);
         }
     }
 }

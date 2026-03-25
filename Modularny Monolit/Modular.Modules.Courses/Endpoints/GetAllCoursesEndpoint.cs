@@ -1,14 +1,17 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Modular.Modules.Courses.Data;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Courses.Endpoints
 {
-    internal class GetAllCoursesEndpoint : EndpointWithoutRequest<List<CourseDto>>
+    [ApiController]
+    [AllowAnonymous]
+    public class GetAllCoursesEndpoint : ControllerBase
     {
         private readonly CoursesDbContext _context;
 
@@ -17,13 +20,8 @@ namespace Modular.Modules.Courses.Endpoints
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Get("/api/courses");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(CancellationToken ct)
+        [HttpGet("/api/courses")]
+        public async Task<IActionResult> HandleAsync(CancellationToken ct)
         {
             var courses = await _context.Courses
                 .Select(c => new CourseDto
@@ -35,7 +33,7 @@ namespace Modular.Modules.Courses.Endpoints
                 })
                 .ToListAsync(ct);
 
-            await Send.OkAsync(courses, cancellation: ct);
+            return Ok(courses);
         }
     }
 }

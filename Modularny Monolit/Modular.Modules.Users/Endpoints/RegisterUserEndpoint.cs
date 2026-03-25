@@ -1,10 +1,11 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using Modular.Modules.Users.Data;
 using Modular.Modules.Users.Entities;
 using Modular.Modules.Users.Helpers.Interfaces;
 using System.Threading;
 using System.Threading.Tasks;
 using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Users.Endpoints
 {
@@ -15,7 +16,9 @@ namespace Modular.Modules.Users.Endpoints
         public string Password { get; set; } = default!;
     }
 
-    internal class RegisterUserEndpoint : Endpoint<RegisterUserRequest>
+    [ApiController]
+    [AllowAnonymous]
+    public class RegisterUserEndpoint : ControllerBase
     {
         private readonly UsersDbContext _context;
         private readonly IPasswordHasher _passwordHasher;
@@ -26,13 +29,8 @@ namespace Modular.Modules.Users.Endpoints
             _passwordHasher = passwordHasher;
         }
 
-        public override void Configure()
-        {
-            Post("/api/users/register");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(RegisterUserRequest req, CancellationToken ct)
+        [HttpPost("/api/users/register")]
+        public async Task<IActionResult> HandleAsync([FromBody] RegisterUserRequest req, CancellationToken ct)
         {
             var user = new User
             {
@@ -45,7 +43,7 @@ namespace Modular.Modules.Users.Endpoints
             _context.Users.Add(user);
             await _context.SaveChangesAsync(ct);
 
-            await Send.OkAsync(ct);
+            return Ok();
         }
     }
 }
