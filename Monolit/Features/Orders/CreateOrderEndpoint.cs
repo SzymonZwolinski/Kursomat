@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Monolit.DataBase;
 using Monolit.Entities;
@@ -12,7 +13,10 @@ using System.Threading.Tasks;
 
 namespace Monolit.Features.Orders
 {
-    public class CreateOrderEndpoint : EndpointWithoutRequest<CreateOrderResponse>
+    [ApiController]
+    [Route("api/orders")]
+    [Authorize]
+    public class CreateOrderEndpoint : ControllerBase
     {
         private readonly MonolitDbContext _context;
         private readonly IDomainEventDispatcher _dispatcher;
@@ -23,19 +27,13 @@ namespace Monolit.Features.Orders
             _dispatcher = dispatcher;
         }
 
-        public override void Configure()
-        {
-            Post("/api/orders");
-            Claims("UserId");
-        }
-
-        public override async Task HandleAsync(CancellationToken ct)
+        [HttpPost]
+        public async Task<IActionResult> HandleAsync(CancellationToken ct)
         {
             var userIdStr = User.FindFirstValue("UserId");
-            if (!Guid.TryParse(userIdStr, out var userId))
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             {
-                await Send.NotFoundAsync(ct);
-                return;
+                return Unauthorized();
             }
 
             var cart = await _context.Carts
@@ -45,8 +43,7 @@ namespace Monolit.Features.Orders
 
             if (cart == null || !cart.Items.Any())
             {
-                await Send.NotFoundAsync(ct);
-                return;
+                return NotFound();
             }
 
             var order = new Entities.Order
@@ -76,7 +73,7 @@ namespace Monolit.Features.Orders
             var courseIds = order.Items.Select(i => i.CourseId).ToList();
             await _dispatcher.DispatchAsync(new OrderCompletedEvent(userId, order.Id, courseIds), ct);
 
-            await Send.OkAsync(new CreateOrderResponse { OrderId = order.Id }, cancellation: ct);
+            return Ok(new CreateOrderResponse { OrderId = order.Id });
         }
     }
 

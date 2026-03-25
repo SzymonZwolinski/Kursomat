@@ -1,11 +1,19 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Monolit.DataBase;
+using System;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.Carts
 {
-    public class GetCartEndpoint : EndpointWithoutRequest<CartDto>
+    [ApiController]
+    [Route("api/cart")]
+    [Authorize]
+    public class GetCartEndpoint : ControllerBase
     {
         private readonly MonolitDbContext _context;
 
@@ -14,15 +22,14 @@ namespace Monolit.Features.Carts
             _context = context;
         }
 
-        public override void Configure()
+        [HttpGet]
+        public async Task<IActionResult> HandleAsync(CancellationToken ct)
         {
-            Get("/api/cart");
-            Claims("UserId");
-        }
-
-        public override async Task HandleAsync(CancellationToken ct)
-        {
-            var userId = Guid.Parse(User.FindFirstValue("UserId") ?? Guid.Empty.ToString());
+            var userIdStr = User.FindFirstValue("UserId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
 
             var cart = await _context.Carts
                 .Include(c => c.Items)
@@ -44,7 +51,7 @@ namespace Monolit.Features.Carts
                 cart = new CartDto();
             }
 
-            await Send.OkAsync(cart, cancellation: ct);
+            return Ok(cart);
         }
     }
 }

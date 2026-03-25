@@ -1,6 +1,11 @@
-﻿using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Monolit.DataBase;
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.Videos
 {
@@ -10,7 +15,9 @@ namespace Monolit.Features.Videos
         public IFormFile File { get; set; } = default!;
     }
 
-    public class UploadVideoEndpoint : Endpoint<UploadVideoRequest>
+    [ApiController]
+    [Route("api/courses")]
+    public class UploadVideoEndpoint : ControllerBase
     {
         private readonly MonolitDbContext _context;
 
@@ -19,20 +26,14 @@ namespace Monolit.Features.Videos
             _context = context;
         }
 
-        public override void Configure()
+        [HttpPost("{CourseId}/video")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid CourseId, [FromForm] UploadVideoRequest req, CancellationToken ct)
         {
-            Post("/api/courses/{CourseId}/video");
-            AllowFileUploads();
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(UploadVideoRequest req, CancellationToken ct)
-        {
-            var course = await _context.Courses.FindAsync(new object[] { req.CourseId }, ct);
+            var course = await _context.Courses.FindAsync(new object[] { CourseId }, ct);
             if (course == null)
             {
-                await Send.NotFoundAsync(ct);
-                return;
+                return NotFound();
             }
 
             var filePath = Path.Combine(Path.GetTempPath(), req.File.FileName);
@@ -42,7 +43,7 @@ namespace Monolit.Features.Videos
                 await req.File.CopyToAsync(stream, ct);
             }
 
-            await Send.OkAsync(cancellation: ct);
+            return Ok();
         }
     }
 }

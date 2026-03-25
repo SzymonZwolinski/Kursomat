@@ -1,11 +1,19 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Monolit.DataBase;
+using System;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.Carts
 {
-    public class RemoveFromCartEndpoint : Endpoint<RemoveFromCartRequest>
+    [ApiController]
+    [Route("api/cart")]
+    [Authorize]
+    public class RemoveFromCartEndpoint : ControllerBase
     {
         private readonly MonolitDbContext _context;
 
@@ -14,15 +22,14 @@ namespace Monolit.Features.Carts
             _context = context;
         }
 
-        public override void Configure()
+        [HttpDelete("items/{CourseId}")]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid CourseId, CancellationToken ct)
         {
-            Delete("/api/cart/items/{CourseId}");
-            Claims("UserId");
-        }
-
-        public override async Task HandleAsync(RemoveFromCartRequest req, CancellationToken ct)
-        {
-            var userId = Guid.Parse(User.FindFirstValue("UserId") ?? Guid.Empty.ToString());
+            var userIdStr = User.FindFirstValue("UserId");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+            {
+                return Unauthorized();
+            }
 
             var cart = await _context.Carts
                 .Include(c => c.Items)
@@ -30,18 +37,17 @@ namespace Monolit.Features.Carts
 
             if (cart == null)
             {
-                await Send.NotFoundAsync(ct);
-                return;
+                return NotFound();
             }
 
-            var itemToRemove = cart.Items.FirstOrDefault(i => i.CourseId == req.CourseId);
+            var itemToRemove = cart.Items.FirstOrDefault(i => i.CourseId == CourseId);
             if (itemToRemove != null)
             {
                 cart.Items.Remove(itemToRemove);
                 await _context.SaveChangesAsync(ct);
             }
 
-            await Send.OkAsync(ct);
+            return Ok();
         }
     }
 

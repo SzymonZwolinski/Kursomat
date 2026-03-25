@@ -1,11 +1,17 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Monolit.Helpers.Repositories.Interfaces;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.User.Delete
 {
     public record DeleteUserRequest(Guid Id);
 
-    public class DeleteUser : Endpoint<DeleteUserRequest>
+    [ApiController]
+    [Route("api/user")]
+    public class DeleteUser : ControllerBase
     {
         private readonly IUserRepository _userRepository;
 
@@ -14,22 +20,17 @@ namespace Monolit.Features.User.Delete
             _userRepository = userRepository;
         }
 
-        public override void Configure()
+        [HttpDelete("{id}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid id, CancellationToken ct)
         {
-            Delete("/api/user/{id}");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(DeleteUserRequest req, CancellationToken ct)
-        {
-            var result = await _userRepository.DeleteUserAsync(req.Id, ct);
+            var result = await _userRepository.DeleteUserAsync(id, ct);
             if (!result)
             {
-                await Send.NotFoundAsync(ct);
-                return;
+                return NotFound();
             }
 
-            await Send.OkAsync(ct);
+            return Ok();
         }
     }
 }

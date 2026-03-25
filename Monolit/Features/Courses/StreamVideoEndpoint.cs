@@ -1,6 +1,11 @@
-﻿using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Monolit.DataBase;
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.Videos
 {
@@ -9,7 +14,9 @@ namespace Monolit.Features.Videos
         public Guid CourseId { get; set; }
     }
 
-    public class StreamVideoEndpoint : Endpoint<StreamVideoRequest, IResult>
+    [ApiController]
+    [Route("api/courses")]
+    public class StreamVideoEndpoint : ControllerBase
     {
         private readonly MonolitDbContext _context;
 
@@ -18,26 +25,19 @@ namespace Monolit.Features.Videos
             _context = context;
         }
 
-        public override void Configure()
+        [HttpGet("{CourseId}/video")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid CourseId, CancellationToken ct)
         {
-            Get("/api/courses/{CourseId}/video");
-            AllowAnonymous();
-        }
+            var filePath = Path.Combine(Path.GetTempPath(), $"{CourseId}.mp4");
 
-        public override async Task HandleAsync(StreamVideoRequest req, CancellationToken ct)
-        {
-            var filePath = Path.Combine(Path.GetTempPath(), $"{req.CourseId}.mp4");
-
-            if (!File.Exists(filePath))
+            if (!System.IO.File.Exists(filePath))
             {
-                await Send.NotFoundAsync(ct);
-                return;
+                return NotFound();
             }
 
             var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            var result = Results.File(fileStream, contentType: "video/mp4", enableRangeProcessing: true);
-
-            await Send.ResultAsync(result);
+            return File(fileStream, contentType: "video/mp4", enableRangeProcessing: true);
         }
     }
 }

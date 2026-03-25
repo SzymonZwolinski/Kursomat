@@ -1,6 +1,10 @@
-﻿using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Monolit.DataBase;
 using Monolit.Entities;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Monolit.Features.Courses
 {
@@ -11,7 +15,9 @@ namespace Monolit.Features.Courses
         public decimal Price { get; set; }
     }
 
-    public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, CourseDto>
+    [ApiController]
+    [Route("api/courses")]
+    public class CreateCourseEndpoint : ControllerBase
     {
         private readonly MonolitDbContext _context;
 
@@ -20,13 +26,9 @@ namespace Monolit.Features.Courses
             _context = context;
         }
 
-        public override void Configure()
-        {
-            Post("/api/courses");
-            AllowAnonymous();
-        }
-
-        public override async Task HandleAsync(CreateCourseRequest req, CancellationToken ct)
+        [HttpPost]
+        [AllowAnonymous]
+        public async Task<IActionResult> HandleAsync([FromBody] CreateCourseRequest req, CancellationToken ct)
         {
             var course = new Course
             {
@@ -48,7 +50,7 @@ namespace Monolit.Features.Courses
                 IsPurchased = false
             };
 
-            await Send.OkAsync(response, cancellation: ct);
+            return Ok(response);
         }
     }
 }
