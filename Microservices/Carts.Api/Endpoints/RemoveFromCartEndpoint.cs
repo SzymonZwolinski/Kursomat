@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Carts.Api.Data;
 
@@ -6,7 +7,9 @@ namespace Carts.Api.Endpoints;
 
 public record RemoveFromCartRequest(Guid UserId, Guid CourseId);
 
-public class RemoveFromCartEndpoint : Endpoint<RemoveFromCartRequest>
+[ApiController]
+[AllowAnonymous]
+public class RemoveFromCartEndpoint : ControllerBase
 {
     private readonly CartsDbContext _dbContext;
 
@@ -15,13 +18,8 @@ public class RemoveFromCartEndpoint : Endpoint<RemoveFromCartRequest>
         _dbContext = dbContext;
     }
 
-    public override void Configure()
-    {
-        Delete("/api/carts/{UserId}/items/{CourseId}");
-        AllowAnonymous();
-    }
-
-    public override async Task HandleAsync(RemoveFromCartRequest req, CancellationToken ct)
+    [HttpDelete("/api/carts/{UserId}/items/{CourseId}")]
+    public async Task<IActionResult> HandleAsync([FromRoute] RemoveFromCartRequest req, CancellationToken ct)
     {
         var cart = await _dbContext.Carts
             .Include(c => c.Items)
@@ -29,8 +27,7 @@ public class RemoveFromCartEndpoint : Endpoint<RemoveFromCartRequest>
 
         if (cart is null)
         {
-            await HttpContext.Response.SendNotFoundAsync(cancellation: ct);
-            return;
+            return NotFound();
         }
 
         var item = cart.Items.FirstOrDefault(i => i.CourseId == req.CourseId);
@@ -40,6 +37,6 @@ public class RemoveFromCartEndpoint : Endpoint<RemoveFromCartRequest>
             await _dbContext.SaveChangesAsync(ct);
         }
 
-        await HttpContext.Response.SendNoContentAsync(cancellation: ct);
+        return NoContent();
     }
 }

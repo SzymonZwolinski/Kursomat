@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Users.Api.Data;
 using Users.Api.Entities;
 using Users.Api.Helpers.Interfaces;
@@ -8,7 +9,9 @@ namespace Users.Api.Endpoints;
 public record RegisterUserRequest(string Email, string Password, string FullName);
 public record RegisterUserResponse(Guid Id);
 
-public class RegisterUserEndpoint : Endpoint<RegisterUserRequest, RegisterUserResponse>
+[ApiController]
+[AllowAnonymous]
+public class RegisterUserEndpoint : ControllerBase
 {
     private readonly UsersDbContext _dbContext;
     private readonly IPasswordHasher _passwordHasher;
@@ -19,13 +22,8 @@ public class RegisterUserEndpoint : Endpoint<RegisterUserRequest, RegisterUserRe
         _passwordHasher = passwordHasher;
     }
 
-    public override void Configure()
-    {
-        Post("/api/users/register");
-        AllowAnonymous();
-    }
-
-    public override async Task HandleAsync(RegisterUserRequest req, CancellationToken ct)
+    [HttpPost("/api/users/register")]
+    public async Task<IActionResult> HandleAsync([FromBody] RegisterUserRequest req, CancellationToken ct)
     {
         var passwordHash = _passwordHasher.Hash(req.Password);
 
@@ -40,6 +38,6 @@ public class RegisterUserEndpoint : Endpoint<RegisterUserRequest, RegisterUserRe
         _dbContext.Users.Add(user);
         await _dbContext.SaveChangesAsync(ct);
 
-        await HttpContext.Response.SendAsync(new RegisterUserResponse(user.Id), 201, cancellation: ct);
+        return Created($"/api/users/{user.Id}", new RegisterUserResponse(user.Id));
     }
 }

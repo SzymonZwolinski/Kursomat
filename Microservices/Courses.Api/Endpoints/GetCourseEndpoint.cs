@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Courses.Api.Data;
 
@@ -7,7 +8,9 @@ namespace Courses.Api.Endpoints;
 public record GetCourseRequest(Guid Id);
 public record GetCourseResponse(Guid Id, string Title, string Description, decimal Price);
 
-public class GetCourseEndpoint : Endpoint<GetCourseRequest, GetCourseResponse>
+[ApiController]
+[AllowAnonymous]
+public class GetCourseEndpoint : ControllerBase
 {
     private readonly CoursesDbContext _dbContext;
 
@@ -16,21 +19,15 @@ public class GetCourseEndpoint : Endpoint<GetCourseRequest, GetCourseResponse>
         _dbContext = dbContext;
     }
 
-    public override void Configure()
-    {
-        Get("/api/courses/{id}");
-        AllowAnonymous();
-    }
-
-    public override async Task HandleAsync(GetCourseRequest req, CancellationToken ct)
+    [HttpGet("/api/courses/{Id}")]
+    public async Task<IActionResult> HandleAsync([FromRoute] GetCourseRequest req, CancellationToken ct)
     {
         var course = await _dbContext.Courses.FirstOrDefaultAsync(c => c.Id == req.Id, ct);
         if (course is null)
         {
-            await HttpContext.Response.SendNotFoundAsync(cancellation: ct);
-            return;
+            return NotFound();
         }
 
-        await HttpContext.Response.SendAsync(new GetCourseResponse(course.Id, course.Title, course.Description, course.Price), cancellation: ct);
+        return Ok(new GetCourseResponse(course.Id, course.Title, course.Description, course.Price));
     }
 }

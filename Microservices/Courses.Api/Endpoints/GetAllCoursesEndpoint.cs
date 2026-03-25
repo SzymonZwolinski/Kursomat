@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Courses.Api.Data;
 
@@ -6,7 +7,9 @@ namespace Courses.Api.Endpoints;
 
 public record CourseDto(Guid Id, string Title, string Description, decimal Price);
 
-public class GetAllCoursesEndpoint : EndpointWithoutRequest<List<CourseDto>>
+[ApiController]
+[AllowAnonymous]
+public class GetAllCoursesEndpoint : ControllerBase
 {
     private readonly CoursesDbContext _dbContext;
 
@@ -15,18 +18,13 @@ public class GetAllCoursesEndpoint : EndpointWithoutRequest<List<CourseDto>>
         _dbContext = dbContext;
     }
 
-    public override void Configure()
-    {
-        Get("/api/courses");
-        AllowAnonymous();
-    }
-
-    public override async Task HandleAsync(CancellationToken ct)
+    [HttpGet("/api/courses")]
+    public async Task<IActionResult> HandleAsync(CancellationToken ct)
     {
         var courses = await _dbContext.Courses
             .Select(c => new CourseDto(c.Id, c.Title, c.Description, c.Price))
             .ToListAsync(ct);
 
-        await HttpContext.Response.SendAsync(courses, cancellation: ct);
+        return Ok(courses);
     }
 }

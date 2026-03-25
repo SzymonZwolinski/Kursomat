@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Courses.Api.Data;
 using Courses.Api.Entities;
 
@@ -7,7 +8,9 @@ namespace Courses.Api.Endpoints;
 public record CreateCourseRequest(string Title, string Description, decimal Price);
 public record CreateCourseResponse(Guid Id);
 
-public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, CreateCourseResponse>
+[ApiController]
+[AllowAnonymous]
+public class CreateCourseEndpoint : ControllerBase
 {
     private readonly CoursesDbContext _dbContext;
 
@@ -16,13 +19,8 @@ public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, CreateCourseRe
         _dbContext = dbContext;
     }
 
-    public override void Configure()
-    {
-        Post("/api/courses");
-        AllowAnonymous();
-    }
-
-    public override async Task HandleAsync(CreateCourseRequest req, CancellationToken ct)
+    [HttpPost("/api/courses")]
+    public async Task<IActionResult> HandleAsync([FromBody] CreateCourseRequest req, CancellationToken ct)
     {
         var course = new Course
         {
@@ -35,6 +33,6 @@ public class CreateCourseEndpoint : Endpoint<CreateCourseRequest, CreateCourseRe
         _dbContext.Courses.Add(course);
         await _dbContext.SaveChangesAsync(ct);
 
-        await HttpContext.Response.SendAsync(new CreateCourseResponse(course.Id), 201, cancellation: ct);
+        return Created($"/api/courses/{course.Id}", new CreateCourseResponse(course.Id));
     }
 }
