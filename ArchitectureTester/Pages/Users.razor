@@ -13,12 +13,16 @@
             <input @bind="newUser.Id" class="form-control" />
         </div>
         <div class="form-group mb-2">
-            <label>First Name</label>
-            <input @bind="newUser.FirstName" class="form-control" />
+            <label>Login</label>
+            <input @bind="newUser.Login" class="form-control" />
         </div>
         <div class="form-group mb-2">
-            <label>Last Name</label>
-            <input @bind="newUser.LastName" class="form-control" />
+            <label>Password</label>
+            <input @bind="newUser.Password" class="form-control" type="password" />
+        </div>
+        <div class="form-group mb-2">
+            <label>Email</label>
+            <input @bind="newUser.Email" class="form-control" type="email" />
         </div>
         <button class="btn btn-primary" @onclick="CreateUser">Create</button>
 
@@ -56,7 +60,7 @@
             <ul class="list-group mt-3">
                 @foreach (var user in users)
                 {
-                    <li class="list-group-item">@user.FirstName @user.LastName (ID: @user.Id)</li>
+                    <li class="list-group-item">@user.Login @user.Email (ID: @user.Id)</li>
                 }
             </ul>
         }
@@ -66,7 +70,7 @@
 @code {
     private CreateUserDto newUser = new() { Id = Guid.NewGuid() };
     private PerformanceResult? createResult;
-    private PerformanceResult<List<UserDto>>? getResult;
+    private PerformanceResult<UserListResponse>? getResult;
     private List<UserDto>? users;
 
     private async Task CreateUser()
@@ -74,30 +78,37 @@
         createResult = await ApiService.PostAsync("api/users", newUser);
         if (createResult.IsSuccess)
         {
-            newUser = new CreateUserDto { Id = Guid.NewGuid() }; // reset form
+            newUser = new CreateUserDto { Id = Guid.NewGuid() };
         }
     }
 
     private async Task GetUsers()
     {
-        getResult = await ApiService.GetAsync<List<UserDto>>("api/users");
-        if (getResult.IsSuccess)
+        getResult = await ApiService.GetAsync<UserListResponse>("api/user");
+        if (getResult.IsSuccess && getResult.Data != null)
         {
-            users = getResult.Data;
+            users = getResult.Data.Users;
         }
+    }
+
+    public class UserListResponse
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("users")]
+        public List<UserDto> Users { get; set; } = new();
     }
 
     public class CreateUserDto
     {
         public Guid Id { get; set; }
-        public string FirstName { get; set; } = "";
-        public string LastName { get; set; } = "";
+        public string Login { get; set; } = "";
+        public string Password { get; set; } = "";
+        public string Email { get; set; } = "";
     }
 
     public class UserDto
     {
         public Guid Id { get; set; }
-        public string FirstName { get; set; } = "";
-        public string LastName { get; set; } = "";
+        public string Login { get; set; } = "";
+        public string Email { get; set; } = "";
     }
 }

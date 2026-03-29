@@ -23,7 +23,6 @@ namespace Monolit.Features.User.GetAll
         }
 
         [HttpGet]
-        [AllowAnonymous]
         public async Task<IActionResult> HandleAsync(CancellationToken ct)
         {
             var users = await _userRepository.GetAllUsersAsync(ct);
