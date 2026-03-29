@@ -2,6 +2,9 @@
 using Microsoft.EntityFrameworkCore;
 using Monolit.DataBase;
 using Monolit.DependencyInjection;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace Monolit
 {
@@ -33,6 +36,20 @@ namespace Monolit
 			builder.Services.AddDbContext<MonolitDbContext>(options =>
 				options.UseSqlServer(connectionString));
 
+			var jwtSecret = builder.Configuration.GetSection("Jwt:Secret").Value ?? "FallbackSecretKeyForJwtAuthentication12345!@#";
+
+			builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+				.AddJwtBearer(options =>
+				{
+					options.TokenValidationParameters = new TokenValidationParameters
+					{
+						ValidateIssuerSigningKey = true,
+						IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+						ValidateIssuer = false,
+						ValidateAudience = false
+					};
+				});
+
 			DIContener.RegisterServices(builder.Services);
 
 			var app = builder.Build();
@@ -49,6 +66,7 @@ namespace Monolit
 
 			app.UseHttpsRedirection();
 
+			app.UseAuthentication();
 			app.UseAuthorization();
 
 			app.MapControllers();
