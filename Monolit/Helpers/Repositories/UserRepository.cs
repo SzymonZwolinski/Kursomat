@@ -43,6 +43,11 @@ namespace Monolit.Helpers.Repositories
             return await _dbContext.Users.FirstOrDefaultAsync(x => x.Id == id, ct);
         }
 
+        public async Task<User?> GetUserByLoginAsync(string login, CancellationToken ct)
+        {
+            return await _dbContext.Users.FirstOrDefaultAsync(x => x.Login == login, ct);
+        }
+
         public async Task<bool> UpdateUserAsync(User user, CancellationToken ct)
         {
             var userToUpdate = await _dbContext.Users.FirstOrDefaultAsync(x => x.Id == user.Id, ct);
