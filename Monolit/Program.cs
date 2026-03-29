@@ -36,10 +36,14 @@ namespace Monolit
 			DIContener.RegisterServices(builder.Services);
 
 			var app = builder.Build();
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<MonolitDbContext>();
+                db.Database.Migrate(); // To stworzy bazê i na³o¿y migracje
+            }
+            // Configure the HTTP request pipeline.
 
-			// Configure the HTTP request pipeline.
-
-			app.UseSwagger();
+            app.UseSwagger();
 			app.UseSwaggerUI();
 			app.UseCors("AllowAll");
 

@@ -282,4 +282,19 @@ public static class Scenarios
             Simulation.Inject(rate: 5, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(60)) // low constant load
         );
     }
+
+
+          // P-08: Koszt pamięciowy izolacji (Memory Footprint Overhead)
+    public static ScenarioProps GetP09CreateUserScenario(HttpClient httpClient, string baseUrl)
+    {
+        return Scenario.Create("P09_Create_User", async context =>
+        {
+            var request = Http.CreateRequest("GET", $"{baseUrl}/api/user");
+            return await Http.Send(httpClient, request);
+        })
+        .WithoutWarmUp()
+        .WithLoadSimulations(
+            Simulation.Inject(rate: 1, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30))
+        );
+    }
 }

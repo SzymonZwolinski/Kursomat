@@ -63,6 +63,9 @@ class Program
         if (string.IsNullOrEmpty(scenarioToRun) || scenarioToRun == "P-08")
             scenarios.Add(Scenarios.GetP08MemoryOverheadScenario(httpClient, baseUrl, targetName!));
 
+        if (string.IsNullOrEmpty(scenarioToRun) || scenarioToRun == "P-09")
+            scenarios.Add(Scenarios.GetP09CreateUserScenario(httpClient, baseUrl));
+
         NBomberRunner
             .RegisterScenarios(scenarios.ToArray())
             .WithReportFileName($"performance_report_{targetName}_{(scenarioToRun ?? "all")}")
