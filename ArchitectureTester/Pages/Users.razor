@@ -84,7 +84,7 @@
 
     private async Task GetUsers()
     {
-        getResult = await ApiService.GetAsync<UserListResponse>("api/user");
+        getResult = await ApiService.GetAsync<UserListResponse>("api/users");
         if (getResult.IsSuccess && getResult.Data != null)
         {
             users = getResult.Data.Users;

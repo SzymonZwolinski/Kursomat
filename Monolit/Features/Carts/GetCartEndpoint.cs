@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace Monolit.Features.Carts
 {
     [ApiController]
-    [Route("api/cart")]
+    [Route("api/carts")]
     [Authorize]
     public class GetCartEndpoint : ControllerBase
     {
@@ -22,13 +22,18 @@ namespace Monolit.Features.Carts
             _context = context;
         }
 
-        [HttpGet]
-        public async Task<IActionResult> HandleAsync(CancellationToken ct)
+        [HttpGet("{UserId}")]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid UserId, CancellationToken ct)
         {
             var userIdStr = User.FindFirstValue("UserId");
             if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             {
                 return Unauthorized();
+            }
+
+            if (UserId != userId)
+            {
+                return Forbid();
             }
 
             var cart = await _context.Carts

@@ -12,7 +12,7 @@ namespace Monolit.Features.User.Create
 	public record CreateUserResponse(Guid UserId);
 
 	[ApiController]
-	[Route("api/user")]
+	[Route("api/users")]
 	public class CreateUser : ControllerBase
 	{
 		private readonly IUserRepository _userRepository;

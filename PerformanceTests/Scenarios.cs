@@ -101,7 +101,9 @@ public static class Scenarios
             var token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
             if (token == null) return Response.Fail(statusCode: "LoginFailed");
 
-            var request = Http.CreateRequest("GET", $"{baseUrl}/api/carts")
+            var userId = Helpers.ExtractUserIdFromToken(token);
+
+            var request = Http.CreateRequest("GET", $"{baseUrl}/api/carts/{userId}")
                 .WithHeader("Authorization", $"Bearer {token}");
 
             return await Http.Send(httpClient, request);
@@ -199,7 +201,9 @@ public static class Scenarios
             var token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
             if (token == null) return Response.Fail(statusCode: "LoginFailed");
 
-            var request = Http.CreateRequest("GET", $"{baseUrl}/api/carts")
+            var userId = Helpers.ExtractUserIdFromToken(token);
+
+            var request = Http.CreateRequest("GET", $"{baseUrl}/api/carts/{userId}")
                 .WithHeader("Authorization", $"Bearer {token}");
 
             return await Http.Send(httpClient, request);
@@ -218,10 +222,12 @@ public static class Scenarios
             var token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
             if (token == null) return Response.Fail(statusCode: "LoginFailed");
 
+            var userId = Helpers.ExtractUserIdFromToken(token);
+
             var courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
             if (courseId == null) return Response.Fail(statusCode: "CreateCourseFailed");
 
-            var addToCartSuccess = await Helpers.AddToCart(httpClient, baseUrl, token, courseId);
+            var addToCartSuccess = await Helpers.AddToCart(httpClient, baseUrl, token, courseId, userId);
             if (!addToCartSuccess) return Response.Fail(statusCode: "AddToCartFailed");
 
             var payload = new { CourseIds = new[] { courseId }, TotalPrice = 99.99m };
@@ -239,7 +245,7 @@ public static class Scenarios
             int maxRetries = 20;
             while (maxRetries-- > 0)
             {
-                var getCartRequest = Http.CreateRequest("GET", $"{baseUrl}/api/carts")
+                var getCartRequest = Http.CreateRequest("GET", $"{baseUrl}/api/carts/{userId}")
                     .WithHeader("Authorization", $"Bearer {token}");
                 var getCartResponse = await Http.Send(httpClient, getCartRequest);
 
@@ -289,7 +295,7 @@ public static class Scenarios
     {
         return Scenario.Create("P09_Create_User", async context =>
         {
-            var request = Http.CreateRequest("GET", $"{baseUrl}/api/user");
+            var request = Http.CreateRequest("GET", $"{baseUrl}/api/users");
             return await Http.Send(httpClient, request);
         })
         .WithoutWarmUp()

@@ -12,7 +12,7 @@ namespace Monolit.Features.Account.Create
 	public record CreateResponse(Guid UserId);
 
 	[ApiController]
-	[Route("api/account")]
+	[Route("api/users")]
 	public class CreateUser : ControllerBase
 	{
 		private readonly IUserRepository _accountRepository;
@@ -24,7 +24,7 @@ namespace Monolit.Features.Account.Create
 			_passwordHasher = passwordHasher;
 		}
 
-		[HttpPost("create")]
+		[HttpPost("register")]
 		[AllowAnonymous]
 		public async Task<IActionResult> HandleAsync([FromBody] CreateRequest req, CancellationToken ct)
 		{

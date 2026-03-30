@@ -12,7 +12,7 @@ namespace Monolit.Features.User.GetAll
     public record GetAllUsersResponse(IEnumerable<GetUserResponse> Users);
 
     [ApiController]
-    [Route("api/user")]
+    [Route("api/users")]
     public class GetAllUsers : ControllerBase
     {
         private readonly IUserRepository _userRepository;

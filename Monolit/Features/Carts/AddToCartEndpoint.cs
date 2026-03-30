@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace Monolit.Features.Carts
 {
     [ApiController]
-    [Route("api/cart")]
+    [Route("api/carts")]
     [Authorize]
     public class AddToCartEndpoint : ControllerBase
     {
@@ -23,13 +23,18 @@ namespace Monolit.Features.Carts
             _context = context;
         }
 
-        [HttpPost("items")]
-        public async Task<IActionResult> HandleAsync([FromBody] AddToCartRequest req, CancellationToken ct)
+        [HttpPost("{UserId}/items")]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid UserId, [FromBody] AddToCartRequest req, CancellationToken ct)
         {
             var userIdStr = User.FindFirstValue("UserId");
             if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             {
                 return Unauthorized();
+            }
+
+            if (UserId != userId)
+            {
+                return Forbid();
             }
 
             var cart = await _context.Carts

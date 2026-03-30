@@ -11,7 +11,7 @@ namespace Monolit.Features.User.Get
     public record GetUserResponse(Guid Id, string Login, string Email);
 
     [ApiController]
-    [Route("api/user")]
+    [Route("api/users")]
     public class GetUser : ControllerBase
     {
         private readonly IUserRepository _userRepository;
