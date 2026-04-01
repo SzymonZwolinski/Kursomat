@@ -17,7 +17,7 @@ namespace Monolit.Features.Account.Login
     public record LoginResponse(string Token);
 
     [ApiController]
-    [Route("api/account")]
+    [Route("api/users")]
     public class LoginUser : ControllerBase
     {
         private readonly IUserRepository _accountRepository;

@@ -46,9 +46,7 @@
 
     private async Task RegisterUser()
     {
-        var endpoint = ApiService.CurrentArchitecture == ArchitectureType.Monolith
-            ? "api/account/create"
-            : "api/users/register";
+        var endpoint = "api/users/register";
 
         registerResult = await ApiService.PostAsync(endpoint, registerData);
         if (registerResult.IsSuccess)

@@ -22,9 +22,7 @@ public static class Helpers
         };
 
         var registerContent = new StringContent(JsonSerializer.Serialize(registerPayload), Encoding.UTF8, "application/json");
-        var reqToUse = targetName == "Microservices" || targetName == "ModularMonolith"
-            ? Http.CreateRequest("POST", $"{baseUrl}/api/users/register").WithHeader("Content-Type", "application/json").WithBody(registerContent)
-            : Http.CreateRequest("POST", $"{baseUrl}/api/account/create").WithHeader("Content-Type", "application/json").WithBody(registerContent);
+        var reqToUse = Http.CreateRequest("POST", $"{baseUrl}/api/users/register").WithHeader("Content-Type", "application/json").WithBody(registerContent);
 
         var registerResponse = await Http.Send(httpClient, reqToUse);
         if (registerResponse.IsError) return null;
@@ -36,7 +34,7 @@ public static class Helpers
         };
 
         var loginContent = new StringContent(JsonSerializer.Serialize(loginPayload), Encoding.UTF8, "application/json");
-        var loginRequest = Http.CreateRequest("POST", targetName == "Microservices" || targetName == "ModularMonolith" ? $"{baseUrl}/api/users/login" : $"{baseUrl}/api/account/login")
+        var loginRequest = Http.CreateRequest("POST", $"{baseUrl}/api/users/login")
             .WithHeader("Content-Type", "application/json")
             .WithBody(loginContent);
 
@@ -45,7 +43,17 @@ public static class Helpers
 
         var loginResultString = await loginResponse.Payload.Value.Content.ReadAsStringAsync();
         using var loginResultDoc = JsonDocument.Parse(loginResultString);
-        return loginResultDoc.RootElement.GetProperty("token").GetString();
+
+        var token = loginResultDoc.RootElement.GetProperty("token").GetString();
+        return token;
+    }
+
+    public static string ExtractUserIdFromToken(string token)
+    {
+        var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+        var jwtToken = handler.ReadJwtToken(token);
+        var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId");
+        return userIdClaim?.Value ?? Guid.Empty.ToString();
     }
 
     public static async Task<string?> CreateCourse(HttpClient httpClient, string baseUrl, string token)
@@ -72,11 +80,11 @@ public static class Helpers
         return courseResultDoc.RootElement.GetProperty("id").GetString();
     }
 
-    public static async Task<bool> AddToCart(HttpClient httpClient, string baseUrl, string token, string courseId)
+    public static async Task<bool> AddToCart(HttpClient httpClient, string baseUrl, string token, string courseId, string userId)
     {
         var addToCartPayload = new { CourseId = courseId };
         var addToCartContent = new StringContent(JsonSerializer.Serialize(addToCartPayload), Encoding.UTF8, "application/json");
-        var addToCartRequest = Http.CreateRequest("POST", $"{baseUrl}/api/carts/items")
+        var addToCartRequest = Http.CreateRequest("POST", $"{baseUrl}/api/carts/{userId}/items")
             .WithHeader("Content-Type", "application/json")
             .WithHeader("Authorization", $"Bearer {token}")
             .WithBody(addToCartContent);

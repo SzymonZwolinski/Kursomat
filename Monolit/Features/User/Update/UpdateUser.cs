@@ -10,7 +10,7 @@ namespace Monolit.Features.User.Update
     public record UpdateUserRequest(string Login, string Email, string? Password);
 
     [ApiController]
-    [Route("api/user")]
+    [Route("api/users")]
     public class UpdateUser : ControllerBase
     {
         private readonly IUserRepository _userRepository;

@@ -10,7 +10,7 @@ namespace Monolit.Features.User.Delete
     public record DeleteUserRequest(Guid Id);
 
     [ApiController]
-    [Route("api/user")]
+    [Route("api/users")]
     public class DeleteUser : ControllerBase
     {
         private readonly IUserRepository _userRepository;

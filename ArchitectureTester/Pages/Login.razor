@@ -42,9 +42,7 @@
 
     private async Task LoginUser()
     {
-        var endpoint = ApiService.CurrentArchitecture == ArchitectureType.Monolith
-            ? "api/account/login"
-            : "api/users/login";
+        var endpoint = "api/users/login";
 
         loginResult = await ApiService.PostWithResponseAsync<LoginResponseDto, LoginDto>(endpoint, loginData);
         if (loginResult.IsSuccess && loginResult.Data != null)
