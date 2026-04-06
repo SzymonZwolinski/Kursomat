@@ -21,7 +21,7 @@ public class ApiService
         _httpClient = httpClient;
     }
 
-    private string GetBaseUrl()
+    public string GetBaseUrl()
     {
         return CurrentArchitecture switch
         {
@@ -32,7 +32,7 @@ public class ApiService
         };
     }
 
-    private string BuildUrl(string endpoint)
+    public string BuildUrl(string endpoint)
     {
         var baseUrl = GetBaseUrl();
         return $"{baseUrl}/{endpoint.TrimStart('/')}";
@@ -65,6 +65,73 @@ public class ApiService
             if (response.IsSuccessStatusCode)
             {
                 result.Data = await response.Content.ReadFromJsonAsync<T>();
+                result.IsSuccess = true;
+            }
+            else
+            {
+                result.IsSuccess = false;
+                result.ErrorMessage = $"Status: {response.StatusCode}. {await response.Content.ReadAsStringAsync()}";
+            }
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            result.ElapsedMilliseconds = sw.ElapsedMilliseconds;
+            result.IsSuccess = false;
+            result.ErrorMessage = ex.Message;
+        }
+
+        return result;
+    }
+
+    public async Task<PerformanceResult> PostFileAsync(string endpoint, MultipartFormDataContent content)
+    {
+        EnsureAuthorizationHeader();
+        var result = new PerformanceResult();
+        var sw = Stopwatch.StartNew();
+
+        try
+        {
+            var response = await _httpClient.PostAsync(BuildUrl(endpoint), content);
+            sw.Stop();
+            result.ElapsedMilliseconds = sw.ElapsedMilliseconds;
+
+            if (response.IsSuccessStatusCode)
+            {
+                result.IsSuccess = true;
+            }
+            else
+            {
+                result.IsSuccess = false;
+                result.ErrorMessage = $"Status: {response.StatusCode}. {await response.Content.ReadAsStringAsync()}";
+            }
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            result.ElapsedMilliseconds = sw.ElapsedMilliseconds;
+            result.IsSuccess = false;
+            result.ErrorMessage = ex.Message;
+        }
+
+        return result;
+    }
+
+    public async Task<PerformanceResult<Stream>> GetStreamAsync(string endpoint)
+    {
+        EnsureAuthorizationHeader();
+        var result = new PerformanceResult<Stream>();
+        var sw = Stopwatch.StartNew();
+
+        try
+        {
+            var response = await _httpClient.GetAsync(BuildUrl(endpoint), HttpCompletionOption.ResponseHeadersRead);
+            sw.Stop();
+            result.ElapsedMilliseconds = sw.ElapsedMilliseconds;
+
+            if (response.IsSuccessStatusCode)
+            {
+                result.Data = await response.Content.ReadAsStreamAsync();
                 result.IsSuccess = true;
             }
             else
