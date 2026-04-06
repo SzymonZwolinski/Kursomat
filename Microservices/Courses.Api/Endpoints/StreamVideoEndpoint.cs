@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 using System;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
-using Modular.Modules.Courses.Data;
+using Courses.Api.Data;
 
-namespace Modular.Modules.Courses.Endpoints
+namespace Courses.Api.Endpoints
 {
     [ApiController]
     [AllowAnonymous]
@@ -59,7 +59,7 @@ namespace Modular.Modules.Courses.Endpoints
                 return Unauthorized();
             }
 
-            var hasPurchased = await _context.Set<Modular.Modules.Courses.Entities.UserCourse>()
+            var hasPurchased = await _context.Set<Courses.Api.Entities.UserCourse>()
                 .AnyAsync(uc => uc.UserId == userId && uc.CourseId == CourseId, ct);
 
             if (!hasPurchased)
