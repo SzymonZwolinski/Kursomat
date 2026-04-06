@@ -290,7 +290,7 @@ public static class Scenarios
     }
 
 
-          // P-08: Koszt pamięciowy izolacji (Memory Footprint Overhead)
+    // P-09: test endpointu
     public static ScenarioProps GetP09CreateUserScenario(HttpClient httpClient, string baseUrl)
     {
         return Scenario.Create("P09_Create_User", async context =>

@@ -14,7 +14,7 @@
         </div>
         <div class="form-group mb-2">
             <label>Title</label>
-            <input @bind="newCourse.Title" class="form-control" />
+            <input @bind="newCourse.Name" class="form-control" />
         </div>
         <div class="form-group mb-2">
             <label>Description</label>
@@ -61,7 +61,7 @@
                 @foreach (var course in courses)
                 {
                     <li class="list-group-item">
-                        <strong>@course.Title</strong> - $@course.Price<br/>
+                        <strong>@course.Name</strong> - $@course.Price<br/>
                         <small>@course.Description (ID: @course.Id)</small>
                     </li>
                 }
@@ -97,7 +97,7 @@
     public class CreateCourseDto
     {
         public Guid Id { get; set; }
-        public string Title { get; set; } = "";
+        public string Name { get; set; } = "";
         public string Description { get; set; } = "";
         public decimal Price { get; set; }
     }
@@ -105,7 +105,7 @@
     public class CourseDto
     {
         public Guid Id { get; set; }
-        public string Title { get; set; } = "";
+        public string Name { get; set; } = "";
         public string Description { get; set; } = "";
         public decimal Price { get; set; }
     }

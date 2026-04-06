@@ -9,7 +9,7 @@ public class ApiService
     private readonly HttpClient _httpClient;
 
     // Domyślne porty z plików docker-compose
-    private const string MonolithUrl = "https://localhost:7044";
+    private const string MonolithUrl = "http://localhost:8080";
     private const string ModularMonolithUrl = "http://localhost:8081";
     private const string MicroservicesUrl = "http://localhost:8080";
 
