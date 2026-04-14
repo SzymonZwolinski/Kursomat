@@ -11,10 +11,11 @@ services:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "q"]
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10 # Increased retries to give it more time to wake up
+      start_period: 20s # Gives the container a "grace period" before checks count against it
 
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest

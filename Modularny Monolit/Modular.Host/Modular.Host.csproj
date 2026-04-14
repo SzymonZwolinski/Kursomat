@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\Modular.Modules.Users\Modular.Modules.Users.csproj" />
