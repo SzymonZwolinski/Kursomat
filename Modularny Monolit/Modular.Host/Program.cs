@@ -1,15 +1,20 @@
-using Modular.Modules.Courses;
-using Modular.Modules.Users;
-using Modular.Modules.Sales;
-using Modular.Modules.Carts;
-using Modular.Shared.Events;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Modular.Modules.Carts.EventHandlers;
-using Modular.Modules.Courses.EventHandlers;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using Modular.Modules.Carts;
+using Modular.Modules.Carts.Data;
+using Modular.Modules.Carts.EventHandlers;
+using Modular.Modules.Courses;
+using Modular.Modules.Courses.Data;
+using Modular.Modules.Courses.EventHandlers;
+using Modular.Modules.Sales;
+using Modular.Modules.Sales.Data;
+using Modular.Modules.Users;
+using Modular.Modules.Users.Data;
+using Modular.Shared.Events;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -50,6 +55,15 @@ builder.Services.AddScoped<IDomainEventHandler<OrderCompletedEvent>, OrderComple
 builder.Services.AddScoped<IDomainEventHandler<OrderCompletedEvent>, OrderCompletedCourseGranter>();
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    services.GetRequiredService<CoursesDbContext>().Database.Migrate();
+    services.GetRequiredService<UsersDbContext>().Database.Migrate();
+    services.GetRequiredService<SalesDbContext>().Database.Migrate();
+    services.GetRequiredService<CartsDbContext>().Database.Migrate();
+}
 
 app.UseCors("AllowAll");
 

@@ -35,7 +35,7 @@ namespace Monolit.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Carts");
+                    b.ToTable("Carts", (string)null);
                 });
 
             modelBuilder.Entity("Monolit.Entities.CartItem", b =>
@@ -56,7 +56,7 @@ namespace Monolit.Migrations
 
                     b.HasIndex("CourseId");
 
-                    b.ToTable("CartItems");
+                    b.ToTable("CartItems", (string)null);
                 });
 
             modelBuilder.Entity("Monolit.Entities.Course", b =>
@@ -81,7 +81,7 @@ namespace Monolit.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Courses");
+                    b.ToTable("Courses", (string)null);
                 });
 
             modelBuilder.Entity("Monolit.Entities.Order", b =>
@@ -106,7 +106,7 @@ namespace Monolit.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("Monolit.Entities.OrderItem", b =>
@@ -130,7 +130,7 @@ namespace Monolit.Migrations
 
                     b.HasIndex("OrderId");
 
-                    b.ToTable("OrderItems");
+                    b.ToTable("OrderItems", (string)null);
                 });
 
             modelBuilder.Entity("Monolit.Entities.User", b =>
@@ -153,7 +153,7 @@ namespace Monolit.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("Monolit.Entities.UserCourse", b =>
@@ -174,7 +174,7 @@ namespace Monolit.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("UserCourses");
+                    b.ToTable("UserCourses", (string)null);
                 });
 
             modelBuilder.Entity("Monolit.Entities.Cart", b =>

@@ -125,7 +125,7 @@
         var createReq = new
         {
             Id = newCourse.Id,
-            Name = newCourse.Title, // Backend często oczekuje "Name"
+            Name = newCourse.Name, // Backend często oczekuje "Name"
             Description = newCourse.Description,
             Price = newCourse.Price
         };
@@ -150,6 +150,7 @@
 
     private async Task UploadVideoForExistingCourse(InputFileChangeEventArgs e, Guid courseId)
     {
+        Console.WriteLine(courseId);
         var file = e.File;
         var res = await UploadFileAsync(courseId, file);
         uploadResults[courseId] = res;
@@ -157,14 +158,21 @@
 
     private async Task<PerformanceResult> UploadFileAsync(Guid courseId, IBrowserFile file)
     {
-        using var content = new MultipartFormDataContent();
-        // Limit to 500MB
-        var streamContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 1024 * 1024 * 500));
+        var content = new MultipartFormDataContent();
+
+        // Otwieramy strumień - NIE zamykaj go (using) tutaj, HttpClient zrobi to sam
+        var fileStream = file.OpenReadStream(maxAllowedSize: 1024 * 1024 * 500);
+        var streamContent = new StreamContent(fileStream);
+
+        // Kluczowe: Nagłówek Content-Type dla pliku
         streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+
+        // Nazwa pola "file" musi być identyczna z tym, czego szukasz na serwerze
         content.Add(streamContent, "file", file.Name);
 
-        var res = await ApiService.PostFileAsync($"api/courses/{courseId}/video", content);
-        return res;
+        // Wyślij bezpośrednio
+        var response = await ApiService.PostFileAsync($"api/courses/{courseId}/video", content);
+        return response;
     }
 
     private Task LoadVideoStream(Guid courseId)

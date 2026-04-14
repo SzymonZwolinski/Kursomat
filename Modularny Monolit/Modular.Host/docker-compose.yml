@@ -1,11 +1,10 @@
-version: '3.8'
-
+version: '3.8' # Możesz to usunąć, jeśli nie chcesz ostrzeżeń
 services:
   modular-api:
     image: modular-api:latest
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..                   # <--- DWIE KROPKI (katalog wyżej)
+      dockerfile: Modular.Host/Dockerfile # <--- Wskazanie na plik
     ports:
       - "8081:8080"
     environment:

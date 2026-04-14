@@ -11,7 +11,7 @@ namespace Monolit.Features.Videos
 {
     public class UploadVideoRequest
     {
-        public Guid CourseId { get; set; }
+        /*public Guid CourseId { get; set; }*/
         public IFormFile File { get; set; } = default!;
     }
 
@@ -28,22 +28,53 @@ namespace Monolit.Features.Videos
 
         [HttpPost("{CourseId}/video")]
         [AllowAnonymous]
-        public async Task<IActionResult> HandleAsync([FromRoute] Guid CourseId, [FromForm] UploadVideoRequest req, CancellationToken ct)
+        [IgnoreAntiforgeryToken]
+        public async Task<IActionResult> HandleAsync([FromRoute] Guid CourseId, [FromForm] IFormFile file, CancellationToken ct)
         {
             var course = await _context.Courses.FindAsync(new object[] { CourseId }, ct);
-            if (course == null)
-            {
-                return NotFound();
-            }
 
-            var filePath = Path.Combine(Path.GetTempPath(), req.File.FileName);
+            if (course == null) return NotFound();
+            if (file == null) return BadRequest();
+
+            var filePath = Path.Combine(Path.GetTempPath(), file.FileName);
 
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                await req.File.CopyToAsync(stream, ct);
+                await file.CopyToAsync(stream, ct);
             }
+
+            course.VideoPath = filePath;
+            await _context.SaveChangesAsync(ct);
 
             return Ok();
         }
+
+        /* [HttpPost("{CourseId}/video")]
+         [AllowAnonymous]
+         [IgnoreAntiforgeryToken]
+         public async Task<IActionResult> HandleAsync([FromRoute] Guid CourseId, CancellationToken ct)
+         {
+             Console.WriteLine($"--- WEJŒCIE DO HANDLERA: {CourseId} ---");
+
+             var test = Request;
+             return Ok();
+             //var file = Request.Form.Files.GetFile("file"); // Pobranie rêczne po nazwie klucza
+ *//*
+             if (file == null) return BadRequest("Nie znaleziono pliku w Request.Form.Files");
+
+             var course = await _context.Courses.FindAsync(new object[] { CourseId }, ct);
+             if (course == null) return NotFound();
+
+             var filePath = Path.Combine(Path.GetTempPath(), file.FileName);
+             using (var stream = new FileStream(filePath, FileMode.Create))
+             {
+                 await file.CopyToAsync(stream, ct);
+             }
+
+             course.VideoPath = filePath;
+             await _context.SaveChangesAsync(ct);
+
+             return Ok();*//*
+         }*/
     }
 }

@@ -1,23 +1,25 @@
-version: '3.8'
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 8080
 
-services:
-  modular-api:
-    image: modular-api:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8081:8080"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Development
-      - ConnectionStrings__DefaultConnection=Server=sql-server-modular;Database=kursomat_modular;User Id=sa;Password=TwojeSilneHaslo123!;TrustServerCertificate=True;
-    depends_on:
-      - sql-server-modular
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
 
-  sql-server-modular:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    ports:
-      - "1434:1433"
-    environment:
-      - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=TwojeSilneHaslo123!
+# 1. Kopiujemy całą solucję (ze wszystkimi modułami) do Dockera
+COPY . .
+
+# 2. Przechodzimy do folderu Hosta
+# Dzięki temu .csproj poprawnie znajdzie ścieżki do modułów (np. "..\Modular.Modules.Courses")
+WORKDIR /src/Modular.Host
+
+# 3. Budujemy projekt Hosta
+RUN dotnet restore "Modular.Host.csproj"
+RUN dotnet build "Modular.Host.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "Modular.Host.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+ENTRYPOINT ["dotnet", "Modular.Host.dll"]
