@@ -9,3 +9,5 @@ Modularny Monolit/**/bin/
 Modularny Monolit/**/obj/
 Monolit/**/bin/
 Monolit/**/obj/
+*.user
+*.tmp
