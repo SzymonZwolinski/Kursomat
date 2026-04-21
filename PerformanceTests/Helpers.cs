@@ -52,7 +52,11 @@ public static class Helpers
     {
         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(token);
-        var userIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "UserId");
+
+        var userIdClaim = jwtToken.Claims.FirstOrDefault(c =>
+            c.Type == "UserId" ||
+            c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
+
         return userIdClaim?.Value ?? Guid.Empty.ToString();
     }
 

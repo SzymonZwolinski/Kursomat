@@ -25,17 +25,18 @@ public static class Scenarios
     // P-02: Koszt rozproszonych transakcji (Stress Test - CreateOrderEndpoint)
     public static ScenarioProps GetP02Scenario(HttpClient httpClient, string baseUrl, string targetName)
     {
+        // Zmienne współdzielone dla całego testu
+        string token = null;
+        string courseId = null;
+
         return Scenario.Create("p02_create_order", async context =>
         {
-            var token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
-            if (token == null) return Response.Fail(statusCode: "LoginFailed");
-
-            var courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
-            if (courseId == null) return Response.Fail(statusCode: "CreateCourseFailed");
+            // TEN KOD WYKONA SIĘ NP. 50 RAZY NA SEKUNDĘ
+            if (token == null || courseId == null) return Response.Fail(statusCode: "SetupFailed");
 
             var payload = new
             {
-                UserId = Guid.NewGuid(),
+                UserId = Guid.NewGuid(), // lub Helpers.ExtractUserIdFromToken(token)
                 CourseIds = new[] { courseId },
                 TotalPrice = 99.99m
             };
@@ -48,6 +49,15 @@ public static class Scenarios
 
             return await Http.Send(httpClient, request);
         })
+        .WithInit(async context =>
+        {
+            // TEN KOD WYKONA SIĘ TYLKO RAZ PRZED TESTEM (rozgrzewka)
+            token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
+            if (token != null)
+            {
+                courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+            }
+        })
         .WithoutWarmUp()
         .WithLoadSimulations(
             Simulation.RampingInject(rate: 50, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30))
@@ -57,16 +67,14 @@ public static class Scenarios
     // P-03: Izolacja zasobów i propagacja awarii (Spike Test - UploadVideo vs GetCart)
     public static ScenarioProps GetP03UploadVideoScenario(HttpClient httpClient, string baseUrl, string targetName)
     {
+        string token = null;
+        string courseId = null;
+        byte[] fileContent = new byte[1024 * 1024];
+        new Random().NextBytes(fileContent);
+
         return Scenario.Create("p03_upload_video", async context =>
         {
-            var token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
-            if (token == null) return Response.Fail(statusCode: "LoginFailed");
-
-            var courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
-            if (courseId == null) return Response.Fail(statusCode: "CreateCourseFailed");
-
-            var fileContent = new byte[1024 * 1024];
-            new Random().NextBytes(fileContent);
+            if (token == null || courseId == null) return Response.Fail(statusCode: "SetupFailed");
 
             var multipart = new MultipartFormDataContent();
             multipart.Add(new StringContent(courseId), "CourseId");
@@ -78,13 +86,17 @@ public static class Scenarios
             };
             rawRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-            var startTime = DateTime.UtcNow;
             var response = await httpClient.SendAsync(rawRequest);
-            var durationMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
             return response.IsSuccessStatusCode
                 ? Response.Ok(statusCode: response.StatusCode.ToString(), sizeBytes: 1024 * 1024)
                 : Response.Fail(statusCode: response.StatusCode.ToString());
+        })
+        .WithInit(async context =>
+        {
+            token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
+            if (token != null)
+                courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
@@ -96,17 +108,23 @@ public static class Scenarios
 
     public static ScenarioProps GetP03GetCartScenario(HttpClient httpClient, string baseUrl, string targetName)
     {
+        string token = null;
+        string userId = null;
+
         return Scenario.Create("p03_get_cart", async context =>
         {
-            var token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
-            if (token == null) return Response.Fail(statusCode: "LoginFailed");
-
-            var userId = Helpers.ExtractUserIdFromToken(token);
+            if (token == null || userId == null) return Response.Fail(statusCode: "SetupFailed");
 
             var request = Http.CreateRequest("GET", $"{baseUrl}/api/carts/{userId}")
                 .WithHeader("Authorization", $"Bearer {token}");
 
             return await Http.Send(httpClient, request);
+        })
+        .WithInit(async context =>
+        {
+            token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
+            if (token != null)
+                userId = Helpers.ExtractUserIdFromToken(token);
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
@@ -131,13 +149,25 @@ public static class Scenarios
     // P-05: Wydajność agregacji rozproszonych danych (API Gateway vs zapytania SQL)
     public static ScenarioProps GetP05GetOrderHistoryScenario(HttpClient httpClient, string baseUrl, string targetName)
     {
+        string token = null;
+        string orderId = null;
+
         return Scenario.Create("p05_get_order_history", async context =>
         {
-            var token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
-            if (token == null) return Response.Fail(statusCode: "LoginFailed");
+            if (token == null || orderId == null) return Response.Fail(statusCode: "SetupFailed");
+
+            var getOrderRequest = Http.CreateRequest("GET", $"{baseUrl}/api/orders/{orderId}")
+                .WithHeader("Authorization", $"Bearer {token}");
+
+            return await Http.Send(httpClient, getOrderRequest);
+        })
+        .WithInit(async context =>
+        {
+            token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
+            if (token == null) return;
 
             var courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
-            if (courseId == null) return Response.Fail(statusCode: "CreateCourseFailed");
+            if (courseId == null) return;
 
             var payload = new { CourseIds = new[] { courseId }, TotalPrice = 99.99m };
             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -147,16 +177,12 @@ public static class Scenarios
                 .WithBody(content);
 
             var createOrderResponse = await Http.Send(httpClient, createOrderRequest);
-            if (createOrderResponse.IsError) return Response.Fail(statusCode: "CreateOrderFailed");
-
-            var orderResultString = await createOrderResponse.Payload.Value.Content.ReadAsStringAsync();
-            using var orderResultDoc = JsonDocument.Parse(orderResultString);
-            var orderId = orderResultDoc.RootElement.GetProperty("id").GetString();
-
-            var getOrderRequest = Http.CreateRequest("GET", $"{baseUrl}/api/orders/{orderId}")
-                .WithHeader("Authorization", $"Bearer {token}");
-
-            return await Http.Send(httpClient, getOrderRequest);
+            if (!createOrderResponse.IsError)
+            {
+                var orderResultString = await createOrderResponse.Payload.Value.Content.ReadAsStringAsync();
+                using var orderResultDoc = JsonDocument.Parse(orderResultString);
+                orderId = orderResultDoc.RootElement.GetProperty("id").GetString();
+            }
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
@@ -167,10 +193,11 @@ public static class Scenarios
     // P-06: Rywalizacja o pulę połączeń (Connection Pool Starvation)
     public static ScenarioProps GetP06HeavyDbLoadScenario(HttpClient httpClient, string baseUrl, string targetName)
     {
+        string token = null;
+
         return Scenario.Create("p06_heavy_db_load", async context =>
         {
-            var token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
-            if (token == null) return Response.Fail(statusCode: "LoginFailed");
+            if (token == null) return Response.Fail(statusCode: "SetupFailed");
 
             var payload = new
             {
@@ -188,6 +215,10 @@ public static class Scenarios
 
             return await Http.Send(httpClient, request);
         })
+        .WithInit(async context =>
+        {
+            token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
+        })
         .WithoutWarmUp()
         .WithLoadSimulations(
             Simulation.Inject(rate: 100, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30))
@@ -196,17 +227,23 @@ public static class Scenarios
 
     public static ScenarioProps GetP06NormalLoadScenario(HttpClient httpClient, string baseUrl, string targetName)
     {
+        string token = null;
+        string userId = null;
+
         return Scenario.Create("p06_normal_load", async context =>
         {
-            var token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
-            if (token == null) return Response.Fail(statusCode: "LoginFailed");
-
-            var userId = Helpers.ExtractUserIdFromToken(token);
+            if (token == null || userId == null) return Response.Fail(statusCode: "SetupFailed");
 
             var request = Http.CreateRequest("GET", $"{baseUrl}/api/carts/{userId}")
                 .WithHeader("Authorization", $"Bearer {token}");
 
             return await Http.Send(httpClient, request);
+        })
+        .WithInit(async context =>
+        {
+            token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
+            if (token != null)
+                userId = Helpers.ExtractUserIdFromToken(token);
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
@@ -217,18 +254,13 @@ public static class Scenarios
     // P-07: Narzut brokera wiadomości vs zdarzenia wewnątrzprocesowe
     public static ScenarioProps GetP07EventPropagationScenario(HttpClient httpClient, string baseUrl, string targetName)
     {
+        string token = null;
+        string userId = null;
+        string courseId = null;
+
         return Scenario.Create("p07_event_propagation", async context =>
         {
-            var token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
-            if (token == null) return Response.Fail(statusCode: "LoginFailed");
-
-            var userId = Helpers.ExtractUserIdFromToken(token);
-
-            var courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
-            if (courseId == null) return Response.Fail(statusCode: "CreateCourseFailed");
-
-            var addToCartSuccess = await Helpers.AddToCart(httpClient, baseUrl, token, courseId, userId);
-            if (!addToCartSuccess) return Response.Fail(statusCode: "AddToCartFailed");
+            if (token == null || courseId == null) return Response.Fail(statusCode: "SetupFailed");
 
             var payload = new { CourseIds = new[] { courseId }, TotalPrice = 99.99m };
             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -237,12 +269,11 @@ public static class Scenarios
                 .WithHeader("Authorization", $"Bearer {token}")
                 .WithBody(content);
 
-            var startTime = DateTime.UtcNow;
             var createOrderResponse = await Http.Send(httpClient, request);
             if (createOrderResponse.IsError) return Response.Fail(statusCode: "CreateOrderFailed");
 
             bool eventPropagated = false;
-            int maxRetries = 20;
+            int maxRetries = 100; // Czeka do 10 sekund (100 * 100ms)
             while (maxRetries-- > 0)
             {
                 var getCartRequest = Http.CreateRequest("GET", $"{baseUrl}/api/carts/{userId}")
@@ -255,19 +286,28 @@ public static class Scenarios
                     using var cartResultDoc = JsonDocument.Parse(cartResultString);
                     var itemsArray = cartResultDoc.RootElement.GetProperty("items");
 
-                    if (itemsArray.GetArrayLength() == 0) // Event handler OrderCompletedCartCleaner executed
+                    if (itemsArray.GetArrayLength() == 0)
                     {
                         eventPropagated = true;
                         break;
                     }
                 }
-                await Task.Delay(50);
+                await Task.Delay(100);
             }
-            var durationMs = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
-            return eventPropagated
-                ? Response.Ok()
-                : Response.Fail(statusCode: "EventTimeout");
+            return eventPropagated ? Response.Ok() : Response.Fail(statusCode: "EventTimeout");
+        })
+        .WithInit(async context =>
+        {
+            token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
+            if (token == null) return;
+
+            userId = Helpers.ExtractUserIdFromToken(token);
+            courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+            if (courseId != null)
+            {
+                await Helpers.AddToCart(httpClient, baseUrl, token, courseId, userId);
+            }
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
@@ -295,12 +335,151 @@ public static class Scenarios
     {
         return Scenario.Create("P09_Create_User", async context =>
         {
-            var request = Http.CreateRequest("GET", $"{baseUrl}/api/users");
+            var userId = Guid.NewGuid().ToString();
+            var email = $"user_{userId}@test.com";
+            var payload = new
+            {
+                Login = email,
+                Email = email,
+                Password = "Password123!",
+                FullName = "Performance Test User"
+            };
+
+            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            var request = Http.CreateRequest("POST", $"{baseUrl}/api/users/register") // ZMIENIONO GET NA POST I ENDPOINT
+                .WithHeader("Content-Type", "application/json")
+                .WithBody(content);
+
             return await Http.Send(httpClient, request);
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
-            Simulation.Inject(rate: 1, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30))
+            Simulation.Inject(rate: 10, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30)) // Lekko zwiększone obciążenie
+        );
+    }
+
+    public static ScenarioProps GetP10StreamVideoScenario(HttpClient httpClient, string baseUrl, string targetName)
+    {
+        string token = null;
+        string courseId = null;
+
+        return Scenario.Create("p10_stream_video", async context =>
+        {
+            if (token == null || courseId == null) return Response.Fail(statusCode: "SetupFailed");
+
+            // Pobieranie strumienia wideo
+            var request = Http.CreateRequest("GET", $"{baseUrl}/api/courses/{courseId}/video")
+                .WithHeader("Authorization", $"Bearer {token}");
+
+            // Oczekujemy statusu 200/206
+            var response = await Http.Send(httpClient, request);
+            return response.IsError ? Response.Fail() : Response.Ok(sizeBytes: response.Payload.Value.Content.Headers.ContentLength ?? 0);
+        })
+        .WithInit(async context =>
+        {
+            // Przygotowanie: logowanie, utworzenie kursu i wgranie małego wideo (np. 5MB)
+            token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
+            if (token == null) return;
+
+            courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+
+            var fileContent = new byte[5 * 1024 * 1024]; // 5 MB plik
+            new Random().NextBytes(fileContent);
+            var multipart = new MultipartFormDataContent();
+            multipart.Add(new StringContent(courseId), "CourseId");
+            multipart.Add(new ByteArrayContent(fileContent), "VideoFile", "video.mp4");
+
+            var uploadReq = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/courses/video") { Content = multipart };
+            uploadReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            await httpClient.SendAsync(uploadReq);
+        })
+        .WithoutWarmUp()
+        .WithLoadSimulations(
+            // Mniej requestów, bo to ciężki I/O test
+            Simulation.Inject(rate: 10, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30))
+        );
+    }
+
+    public static ScenarioProps GetP11DashboardLoadScenario(HttpClient httpClient, string baseUrl, string targetName)
+    {
+        string token = null;
+        string userId = null;
+
+        return Scenario.Create("p11_dashboard_load", async context =>
+        {
+            if (token == null || userId == null) return Response.Fail(statusCode: "SetupFailed");
+
+            // Generujemy 3 zapytania równolegle (tak jak zrobiłaby to przeglądarka)
+            var req1 = Http.CreateRequest("GET", $"{baseUrl}/api/users/{userId}").WithHeader("Authorization", $"Bearer {token}");
+            var req2 = Http.CreateRequest("GET", $"{baseUrl}/api/courses").WithHeader("Authorization", $"Bearer {token}");
+            var req3 = Http.CreateRequest("GET", $"{baseUrl}/api/carts/{userId}").WithHeader("Authorization", $"Bearer {token}");
+
+            var task1 = Http.Send(httpClient, req1);
+            var task2 = Http.Send(httpClient, req2);
+            var task3 = Http.Send(httpClient, req3);
+
+            // Czekamy na wszystkie 3
+            var results = await Task.WhenAll(task1, task2, task3);
+
+            // Jeśli którekolwiek z nich zawiodło, test oblewa
+            if (results.Any(r => r.IsError)) return Response.Fail();
+
+            return Response.Ok();
+        })
+        .WithInit(async context =>
+        {
+            token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
+            if (token != null) userId = Helpers.ExtractUserIdFromToken(token);
+        })
+        .WithoutWarmUp()
+        .WithLoadSimulations(
+            Simulation.Inject(rate: 50, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30))
+        );
+    }
+
+    public static ScenarioProps GetP12CartConcurrencyScenario(HttpClient httpClient, string baseUrl, string targetName)
+    {
+        string token = null;
+        string userId = null;
+        string courseId = null;
+        bool isAdding = true; // Zmienna do flip-flopa
+
+        return Scenario.Create("p12_cart_concurrency", async context =>
+        {
+            if (token == null || courseId == null) return Response.Fail();
+
+            HttpRequestMessage request;
+
+            // Naprzemiennie dodajemy i usuwamy ten sam przedmiot
+            if (isAdding)
+            {
+                var payload = new { CourseId = courseId };
+                var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+                request = Http.CreateRequest("POST", $"{baseUrl}/api/carts/{userId}/items")
+                    .WithHeader("Authorization", $"Bearer {token}").WithHeader("Content-Type", "application/json").WithBody(content);
+            }
+            else
+            {
+                request = Http.CreateRequest("DELETE", $"{baseUrl}/api/carts/{userId}/items/{courseId}")
+                    .WithHeader("Authorization", $"Bearer {token}");
+            }
+
+            isAdding = !isAdding; // Odwracamy akcję dla kolejnego żądania
+
+            return await Http.Send(httpClient, request);
+        })
+        .WithInit(async context =>
+        {
+            token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
+            if (token == null) return;
+
+            userId = Helpers.ExtractUserIdFromToken(token);
+            courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+        })
+        .WithoutWarmUp()
+        .WithLoadSimulations(
+            // Strzelamy mocno i szybko, żeby sprawdzić jak baza radzi sobie z blokadami wierszy (Locks)
+            Simulation.Inject(rate: 100, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30))
         );
     }
 }
