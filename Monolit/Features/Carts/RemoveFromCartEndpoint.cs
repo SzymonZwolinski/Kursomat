@@ -25,7 +25,7 @@ namespace Monolit.Features.Carts
         [HttpDelete("{UserId}/items/{CourseId}")]
         public async Task<IActionResult> HandleAsync([FromRoute] Guid UserId, [FromRoute] Guid CourseId, CancellationToken ct)
         {
-            var userIdStr = User.FindFirstValue("UserId");
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             {
                 return Unauthorized();
