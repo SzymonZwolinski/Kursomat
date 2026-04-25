@@ -5,11 +5,7 @@ using Monolit.DataBase;
 using Monolit.Entities;
 using Monolit.Features.Orders.Events;
 using Monolit.Helpers.DomainEvents;
-using System;
-using System.Linq;
 using System.Security.Claims;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Monolit.Features.Orders
 {
@@ -30,7 +26,8 @@ namespace Monolit.Features.Orders
         [HttpPost]
         public async Task<IActionResult> HandleAsync(CancellationToken ct)
         {
-            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("nameid");
+
             if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             {
                 return Unauthorized();
@@ -52,7 +49,8 @@ namespace Monolit.Features.Orders
                 UserId = userId,
                 OrderDate = DateTime.UtcNow,
                 TotalPrice = cart.Items.Sum(i => i.Course.Price),
-                Status = OrderStatus.Completed // Simulated
+                Status = OrderStatus.Completed,
+                Items = new List<OrderItem>() 
             };
 
             foreach (var item in cart.Items)
@@ -67,9 +65,10 @@ namespace Monolit.Features.Orders
             }
 
             _context.Orders.Add(order);
+            _context.Carts.Remove(cart);
+
             await _context.SaveChangesAsync(ct);
 
-            // Dispatch domain event to handle side effects
             var courseIds = order.Items.Select(i => i.CourseId).ToList();
             await _dispatcher.DispatchAsync(new OrderCompletedEvent(userId, order.Id, courseIds), ct);
 

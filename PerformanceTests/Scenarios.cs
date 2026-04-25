@@ -25,37 +25,41 @@ public static class Scenarios
     // P-02: Koszt rozproszonych transakcji (Stress Test - CreateOrderEndpoint)
     public static ScenarioProps GetP02Scenario(HttpClient httpClient, string baseUrl, string targetName)
     {
-        // Zmienne współdzielone dla całego testu
         string token = null;
         string courseId = null;
+        string userId = null;
 
         return Scenario.Create("p02_create_order", async context =>
         {
-            // TEN KOD WYKONA SIĘ NP. 50 RAZY NA SEKUNDĘ
-            if (token == null || courseId == null) return Response.Fail(statusCode: "SetupFailed");
+            if (token == null || courseId == null || userId == null) return Response.Fail(statusCode: "SetupFailed");
 
-            var payload = new
+            // 1. ZANIM zrobisz zamówienie, dodaj do koszyka
+            bool added = await Helpers.AddToCart(httpClient, baseUrl, token, courseId, userId);
+
+            // 2. KLUCZOWE: Jeśli koszyk padł, PRZERYWAMY TEN KROK! Nie idziemy do zamówień!
+            if (!added) return Response.Fail(statusCode: "CartFailed");
+
+            // 3. Samo zamówienie (BEZ BODY, bo Twój kod Monolitu i tak czyta z bazy)
+            var request = Http.CreateRequest("POST", $"{baseUrl.TrimEnd('/')}/api/orders")
+                .WithHeader("Authorization", $"Bearer {token}");
+
+            var response = await Http.Send(httpClient, request);
+
+            if (response.IsError)
             {
-                UserId = Guid.NewGuid(), // lub Helpers.ExtractUserIdFromToken(token)
-                CourseIds = new[] { courseId },
-                TotalPrice = 99.99m
-            };
-
-            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-            var request = Http.CreateRequest("POST", $"{baseUrl}/api/orders")
-                .WithHeader("Content-Type", "application/json")
-                .WithHeader("Authorization", $"Bearer {token}")
-                .WithBody(content);
-
-            return await Http.Send(httpClient, request);
+                var err = await response.Payload.Value.Content.ReadAsStringAsync();
+                Console.WriteLine($"\n[BŁĄD Zamówienia] Status: {response.StatusCode} | Body: {err}\n");
+            }
+            return response;
         })
         .WithInit(async context =>
         {
-            // TEN KOD WYKONA SIĘ TYLKO RAZ PRZED TESTEM (rozgrzewka)
             token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
             if (token != null)
             {
+                userId = Helpers.ExtractUserIdFromToken(token);
                 courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+                Console.WriteLine($"\n[DEBUG INIT] Rozgrzewka udana! User: {userId} | Course: {courseId}\n");
             }
         })
         .WithoutWarmUp()
@@ -96,7 +100,10 @@ public static class Scenarios
         {
             token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
             if (token != null)
-                courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+                courseId = await Helpers.CreateCourse(httpClient, baseUrl);
+
+            // 3. KLUCZ: Dodajemy ten kurs do koszyka w bazie
+                await Helpers.AddToCart(httpClient, baseUrl, token, courseId);
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
@@ -166,8 +173,11 @@ public static class Scenarios
             token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
             if (token == null) return;
 
-            var courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+            var courseId = await Helpers.CreateCourse(httpClient, baseUrl);
+
+            // 3. KLUCZ: Dodajemy ten kurs do koszyka w bazie
             if (courseId == null) return;
+            await Helpers.AddToCart(httpClient, baseUrl, token, courseId);
 
             var payload = new { CourseIds = new[] { courseId }, TotalPrice = 99.99m };
             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -303,10 +313,12 @@ public static class Scenarios
             if (token == null) return;
 
             userId = Helpers.ExtractUserIdFromToken(token);
-            courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+            courseId = await Helpers.CreateCourse(httpClient, baseUrl);
+
+            // 3. KLUCZ: Dodajemy ten kurs do koszyka w bazie
             if (courseId != null)
-            {
-                await Helpers.AddToCart(httpClient, baseUrl, token, courseId, userId);
+            {      
+                await Helpers.AddToCart(httpClient, baseUrl, token, courseId);
             }
         })
         .WithoutWarmUp()
@@ -381,8 +393,10 @@ public static class Scenarios
             token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
             if (token == null) return;
 
-            courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+            await Helpers.CreateCourse(httpClient, baseUrl);
 
+            // 3. KLUCZ: Dodajemy ten kurs do koszyka w bazie
+            await Helpers.AddToCart(httpClient, baseUrl, token, courseId);
             var fileContent = new byte[5 * 1024 * 1024]; // 5 MB plik
             new Random().NextBytes(fileContent);
             var multipart = new MultipartFormDataContent();
@@ -474,7 +488,7 @@ public static class Scenarios
             if (token == null) return;
 
             userId = Helpers.ExtractUserIdFromToken(token);
-            courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+            await Helpers.CreateCourse(httpClient, baseUrl);
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
