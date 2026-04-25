@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Monolit.DataBase;
 using Monolit.Entities;
 using Monolit.Features.Orders.Events;
@@ -33,51 +32,41 @@ namespace Monolit.Features.Orders
                 return Unauthorized();
             }
 
-            var cart = await _context.Carts
-                .Include(c => c.Items)
-                .ThenInclude(i => i.Course)
-                .FirstOrDefaultAsync(c => c.UserId == userId, ct);
-
-            if (cart == null || !cart.Items.Any())
-            {
-                return NotFound();
-            }
-
             var order = new Entities.Order
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
                 OrderDate = DateTime.UtcNow,
-                TotalPrice = cart.Items.Sum(i => i.Course.Price),
+                TotalPrice = req.TotalPrice,
                 Status = OrderStatus.Completed,
                 Items = new List<OrderItem>()
             };
 
-            foreach (var item in cart.Items)
+            foreach (var courseId in req.CourseIds)
             {
                 order.Items.Add(new OrderItem
                 {
                     Id = Guid.NewGuid(),
                     OrderId = order.Id,
-                    CourseId = item.CourseId,
-                    Price = item.Course.Price
+                    CourseId = courseId,
+                    Price = 99.99m
                 });
             }
 
             _context.Orders.Add(order);
-
-            _context.Carts.Remove(cart);
-
             await _context.SaveChangesAsync(ct);
 
-            var courseIds = order.Items.Select(i => i.CourseId).ToList();
-            await _dispatcher.DispatchAsync(new OrderCompletedEvent(userId, order.Id, courseIds), ct);
+            await _dispatcher.DispatchAsync(new OrderCompletedEvent(userId, order.Id, req.CourseIds), ct);
 
             return Ok(new CreateOrderResponse { OrderId = order.Id });
         }
     }
 
-    public class CreateOrderRequest { }
+    public class CreateOrderRequest
+    {
+        public List<Guid> CourseIds { get; set; } = new List<Guid>();
+        public decimal TotalPrice { get; set; }
+    }
 
     public class CreateOrderResponse
     {

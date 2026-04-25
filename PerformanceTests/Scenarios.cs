@@ -27,21 +27,22 @@ public static class Scenarios
     {
         string token = null;
         string courseId = null;
-        string userId = null;
 
         return Scenario.Create("p02_create_order", async context =>
         {
-            if (token == null || courseId == null || userId == null) return Response.Fail(statusCode: "SetupFailed");
+            if (token == null || courseId == null) return Response.Fail(statusCode: "SetupFailed");
 
-            // 1. ZANIM zrobisz zamówienie, dodaj do koszyka
-            bool added = await Helpers.AddToCart(httpClient, baseUrl, token, courseId, userId);
+            // BUDUJEMY PRAWIDŁOWY PAYLOAD JSON (koniec z 400 Bad Request)
+            var payload = new
+            {
+                CourseIds = new[] { courseId },
+                TotalPrice = 99.99m
+            };
+            var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
 
-            // 2. KLUCZOWE: Jeśli koszyk padł, PRZERYWAMY TEN KROK! Nie idziemy do zamówień!
-            if (!added) return Response.Fail(statusCode: "CartFailed");
-
-            // 3. Samo zamówienie (BEZ BODY, bo Twój kod Monolitu i tak czyta z bazy)
             var request = Http.CreateRequest("POST", $"{baseUrl.TrimEnd('/')}/api/orders")
-                .WithHeader("Authorization", $"Bearer {token}");
+                .WithHeader("Authorization", $"Bearer {token}")
+                .WithBody(content);
 
             var response = await Http.Send(httpClient, request);
 
@@ -57,9 +58,8 @@ public static class Scenarios
             token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
             if (token != null)
             {
-                userId = Helpers.ExtractUserIdFromToken(token);
                 courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
-                Console.WriteLine($"\n[DEBUG INIT] Rozgrzewka udana! User: {userId} | Course: {courseId}\n");
+                Console.WriteLine($"\n[DEBUG INIT] Rozgrzewka P-02 udana! Course: {courseId}\n");
             }
         })
         .WithoutWarmUp()

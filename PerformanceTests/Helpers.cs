@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Net.Http.Headers; // <-- To jest kluczowe dla czystych nag³ówków
 using NBomber.Http;
 using NBomber.Http.CSharp;
 
@@ -13,47 +14,32 @@ public static class Helpers
         var email = $"user_{userId}@test.com";
         var password = "Password123!";
 
-        var registerPayload = new
-        {
-            Login = email,
-            Email = email,
-            Password = password
-            // Usuniêto FullName, bo CreateRequest go nie przyjmuje!
-        };
-
+        var registerPayload = new { Login = email, Email = email, Password = password };
         var registerContent = new StringContent(JsonSerializer.Serialize(registerPayload), Encoding.UTF8, "application/json");
-        var reqToUse = Http.CreateRequest("POST", $"{baseUrl}/api/users/register")
-            .WithHeader("Content-Type", "application/json")
-            .WithBody(registerContent);
 
-        var registerResponse = await Http.Send(httpClient, reqToUse);
-        if (registerResponse.IsError)
+        // Czysty request C# zamiast NBomberowego
+        var reqToUse = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/users/register") { Content = registerContent };
+        var registerResponse = await httpClient.SendAsync(reqToUse);
+
+        if (!registerResponse.IsSuccessStatusCode)
         {
             Console.WriteLine($"\n[B£¥D Register] Status: {registerResponse.StatusCode}\n");
             return null;
         }
 
-        var loginPayload = new
-        {
-            Login = email,
-            Password = password
-        };
-
+        var loginPayload = new { Login = email, Password = password };
         var loginContent = new StringContent(JsonSerializer.Serialize(loginPayload), Encoding.UTF8, "application/json");
-        var loginRequest = Http.CreateRequest("POST", $"{baseUrl}/api/users/login")
-            .WithHeader("Content-Type", "application/json")
-            .WithBody(loginContent);
+        var loginRequest = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/users/login") { Content = loginContent };
 
-        var loginResponse = await Http.Send(httpClient, loginRequest);
-        if (loginResponse.IsError)
+        var loginResponse = await httpClient.SendAsync(loginRequest);
+        if (!loginResponse.IsSuccessStatusCode)
         {
             Console.WriteLine($"\n[B£¥D Login] Status: {loginResponse.StatusCode}\n");
             return null;
         }
 
-        var loginResultString = await loginResponse.Payload.Value.Content.ReadAsStringAsync();
+        var loginResultString = await loginResponse.Content.ReadAsStringAsync();
         using var loginResultDoc = JsonDocument.Parse(loginResultString);
-
         return loginResultDoc.RootElement.GetProperty("token").GetString();
     }
 
@@ -62,7 +48,6 @@ public static class Helpers
         var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
         var jwtToken = handler.ReadJwtToken(token);
 
-        // KLUCZOWE: Szukamy "nameid", bo to masz w swoim JWT!
         var userIdClaim = jwtToken.Claims.FirstOrDefault(c =>
             c.Type == "nameid" ||
             c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier");
@@ -77,57 +62,50 @@ public static class Helpers
         var createCoursePayload = new
         {
             Name = $"Test Course {Guid.NewGuid()}",
-            // Usuniêto pole "Title", bo wywala³o b³¹d API!
             Description = "A great course",
             Price = 99.99m
         };
 
         var createCourseContent = new StringContent(JsonSerializer.Serialize(createCoursePayload), Encoding.UTF8, "application/json");
-        var createCourseRequest = Http.CreateRequest("POST", $"{baseUrl}/api/courses")
-            .WithHeader("Content-Type", "application/json")
-            .WithBody(createCourseContent);
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/courses") { Content = createCourseContent };
 
         if (!string.IsNullOrEmpty(token))
         {
-            createCourseRequest = createCourseRequest.WithHeader("Authorization", $"Bearer {token}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
-        var createCourseResponse = await Http.Send(httpClient, createCourseRequest);
-        if (createCourseResponse.IsError)
+        var response = await httpClient.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
         {
-            var err = await createCourseResponse.Payload.Value.Content.ReadAsStringAsync();
-            Console.WriteLine($"\n[B£¥D CreateCourse] Status: {createCourseResponse.StatusCode} | {err}\n");
+            var err = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"\n[B£¥D CreateCourse] Status: {response.StatusCode} | Body: {err}\n");
             return null;
         }
 
-        var courseResultString = await createCourseResponse.Payload.Value.Content.ReadAsStringAsync();
+        var courseResultString = await response.Content.ReadAsStringAsync();
         using var courseResultDoc = JsonDocument.Parse(courseResultString);
         return courseResultDoc.RootElement.GetProperty("id").GetString();
     }
 
     public static async Task<bool> AddToCart(HttpClient httpClient, string baseUrl, string token, string courseId, string userId = null)
     {
-        baseUrl = baseUrl.TrimEnd('/'); // Zabezpieczenie przed podwójnym slashem w URL!
+        baseUrl = baseUrl.TrimEnd('/');
         if (string.IsNullOrEmpty(userId))
         {
             userId = ExtractUserIdFromToken(token);
         }
 
-        var url = $"{baseUrl}/api/carts/{userId}/items";
         var addToCartPayload = new { CourseId = courseId };
-        var addToCartContent = new StringContent(JsonSerializer.Serialize(addToCartPayload), System.Text.Encoding.UTF8, "application/json");
+        var content = new StringContent(JsonSerializer.Serialize(addToCartPayload), Encoding.UTF8, "application/json");
 
-        var addToCartRequest = Http.CreateRequest("POST", url)
-            .WithHeader("Content-Type", "application/json")
-            .WithHeader("Authorization", $"Bearer {token}")
-            .WithBody(addToCartContent);
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/carts/{userId}/items") { Content = content };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var addToCartResponse = await Http.Send(httpClient, addToCartRequest);
-        if (addToCartResponse.IsError)
+        var response = await httpClient.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
         {
-            var err = await addToCartResponse.Payload.Value.Content.ReadAsStringAsync();
-            // TEN PRINT ZDRADZI NAM WSZYSTKO:
-            Console.WriteLine($"\n[B£¥D AddToCart] URL: {url} | CourseId: {courseId} | Status: {addToCartResponse.StatusCode} | Body: {err}\n");
+            var err = await response.Content.ReadAsStringAsync();
+            Console.WriteLine($"\n[B£¥D AddToCart] URL: {request.RequestUri} | Status: {response.StatusCode} | Body: {err}\n");
             return false;
         }
         return true;
