@@ -26,7 +26,7 @@ namespace Monolit.Features.Carts
         [HttpPost("{UserId}/items")]
         public async Task<IActionResult> HandleAsync([FromRoute] Guid UserId, [FromBody] AddToCartRequest req, CancellationToken ct)
         {
-            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("nameid");
             if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             {
                 return Unauthorized();
