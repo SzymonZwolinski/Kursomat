@@ -24,7 +24,7 @@ namespace Monolit.Features.Orders
         }
 
         [HttpPost]
-        public async Task<IActionResult> HandleAsync(CancellationToken ct)
+        public async Task<IActionResult> HandleAsync([FromBody] CreateOrderRequest req, CancellationToken ct)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("nameid");
 
@@ -50,7 +50,7 @@ namespace Monolit.Features.Orders
                 OrderDate = DateTime.UtcNow,
                 TotalPrice = cart.Items.Sum(i => i.Course.Price),
                 Status = OrderStatus.Completed,
-                Items = new List<OrderItem>() 
+                Items = new List<OrderItem>()
             };
 
             foreach (var item in cart.Items)
@@ -65,6 +65,7 @@ namespace Monolit.Features.Orders
             }
 
             _context.Orders.Add(order);
+
             _context.Carts.Remove(cart);
 
             await _context.SaveChangesAsync(ct);
@@ -75,6 +76,8 @@ namespace Monolit.Features.Orders
             return Ok(new CreateOrderResponse { OrderId = order.Id });
         }
     }
+
+    public class CreateOrderRequest { }
 
     public class CreateOrderResponse
     {
