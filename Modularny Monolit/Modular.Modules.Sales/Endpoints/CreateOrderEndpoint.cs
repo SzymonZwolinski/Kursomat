@@ -14,15 +14,13 @@ namespace Modular.Modules.Sales.Endpoints
 
     [ApiController]
     [Route("api/orders")]
-    [Authorize] 
+    [Authorize]
     public class CreateOrderEndpoint : ControllerBase
     {
         private readonly SalesDbContext _context;
         private readonly IDomainEventDispatcher _dispatcher;
 
-        public CreateOrderEndpoint(
-            SalesDbContext context,
-            IDomainEventDispatcher dispatcher)
+        public CreateOrderEndpoint(SalesDbContext context, IDomainEventDispatcher dispatcher)
         {
             _context = context;
             _dispatcher = dispatcher;
@@ -31,7 +29,6 @@ namespace Modular.Modules.Sales.Endpoints
         [HttpPost]
         public async Task<IActionResult> HandleAsync([FromBody] CreateOrderRequest req, CancellationToken ct)
         {
-            
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("nameid");
             if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             {
