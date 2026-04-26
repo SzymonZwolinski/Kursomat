@@ -58,11 +58,18 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    services.GetRequiredService<CoursesDbContext>().Database.Migrate();
-    services.GetRequiredService<UsersDbContext>().Database.Migrate();
-    services.GetRequiredService<SalesDbContext>().Database.Migrate();
-    services.GetRequiredService<CartsDbContext>().Database.Migrate();
+    var context = scope.ServiceProvider.GetRequiredService<Modular.Modules.Courses.Data.CoursesDbContext>();
+    context.Database.EnsureCreated();
+    context.Database.Migrate();
+
+    var salesContext = scope.ServiceProvider.GetRequiredService<Modular.Modules.Sales.Data.SalesDbContext>();
+    salesContext.Database.Migrate();
+
+    var usersContext = scope.ServiceProvider.GetRequiredService<Modular.Modules.Users.Data.UsersDbContext>();
+    usersContext.Database.Migrate();
+
+    var cartsContext = scope.ServiceProvider.GetRequiredService<Modular.Modules.Carts.Data.CartsDbContext>();
+    cartsContext.Database.Migrate();
 }
 
 app.UseCors("AllowAll");
