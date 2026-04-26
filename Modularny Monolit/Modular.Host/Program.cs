@@ -59,7 +59,6 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<Modular.Modules.Courses.Data.CoursesDbContext>();
-    context.Database.EnsureCreated();
     context.Database.Migrate();
 
     var salesContext = scope.ServiceProvider.GetRequiredService<Modular.Modules.Sales.Data.SalesDbContext>();
