@@ -7,7 +7,7 @@ namespace Modular.Modules.Courses.Data
     public class CoursesDbContext : DbContext
     {
         public DbSet<Entities.Course> Courses { get; set; }
-
+        public DbSet<Entities.UserCourse> UserCourses { get; set; }
         public CoursesDbContext(DbContextOptions<CoursesDbContext> options) : base(options) { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
