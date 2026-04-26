@@ -1,74 +1,54 @@
 using Microsoft.AspNetCore.Mvc;
-using Modular.Modules.Carts.Contracts;
-using Modular.Modules.Courses.Contracts;
 using Modular.Modules.Sales.Data;
-using Modular.Modules.Sales.Entities;
 using Modular.Shared.Events;
-using System;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Modular.Modules.Sales.Endpoints
 {
     public class CreateOrderRequest
     {
-        public Guid UserId { get; set; } = default!;
+        public List<Guid> CourseIds { get; set; } = new List<Guid>();
+        public decimal TotalPrice { get; set; }
     }
 
     [ApiController]
-    [AllowAnonymous]
+    [Route("api/orders")]
+    [Authorize] 
     public class CreateOrderEndpoint : ControllerBase
     {
         private readonly SalesDbContext _context;
-        private readonly ICartsApi _cartsApi;
-        private readonly ICoursesApi _coursesApi;
         private readonly IDomainEventDispatcher _dispatcher;
 
         public CreateOrderEndpoint(
             SalesDbContext context,
-            ICartsApi cartsApi,
-            ICoursesApi coursesApi,
             IDomainEventDispatcher dispatcher)
         {
             _context = context;
-            _cartsApi = cartsApi;
-            _coursesApi = coursesApi;
             _dispatcher = dispatcher;
         }
 
-        [HttpPost("/api/orders")]
+        [HttpPost]
         public async Task<IActionResult> HandleAsync([FromBody] CreateOrderRequest req, CancellationToken ct)
         {
-            var cart = await _cartsApi.GetCartAsync(req.UserId, ct);
-
-            if (cart == null || !cart.CourseIds.Any())
+            
+            var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("nameid");
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
             {
-                return NotFound();
-            }
-
-            decimal totalPrice = 0;
-            foreach (var courseId in cart.CourseIds)
-            {
-                var course = await _coursesApi.GetCourseAsync(courseId, ct);
-                if (course != null)
-                {
-                    totalPrice += course.Price;
-                }
+                return Unauthorized();
             }
 
             var order = new Entities.Order
             {
                 Id = Guid.NewGuid(),
-                UserId = req.UserId,
-                TotalPrice = totalPrice
+                UserId = userId,
+                TotalPrice = req.TotalPrice
             };
 
             _context.Orders.Add(order);
             await _context.SaveChangesAsync(ct);
 
-            await _dispatcher.DispatchAsync(new OrderCompletedEvent(req.UserId, order.Id, cart.CourseIds), ct);
+            await _dispatcher.DispatchAsync(new OrderCompletedEvent(userId, order.Id, req.CourseIds), ct);
 
             return Ok(new { OrderId = order.Id });
         }
