@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Messaging.Events;
 using Microservices.Sales.Api.Data;
-using Microservices.Sales.Api.Entities;
+using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace Sales.Api.Endpoints;
 
-public record CreateOrderRequest(Guid UserId, List<Guid> CourseIds, decimal TotalPrice);
+public record CreateOrderRequest(Guid? UserId, List<Guid> CourseIds, decimal TotalPrice);
 public record CreateOrderResponse(Guid OrderId);
 
 [ApiController]
@@ -26,10 +27,29 @@ public class CreateOrderEndpoint : ControllerBase
     [HttpPost("/api/orders")]
     public async Task<IActionResult> HandleAsync([FromBody] CreateOrderRequest req, CancellationToken ct)
     {
+        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("UserId");
+
+        if (string.IsNullOrEmpty(userIdStr) && Request.Headers.TryGetValue("Authorization", out var authHeader))
+        {
+            var token = authHeader.ToString().Replace("Bearer ", "").Trim();
+            var tokenHandler = new JwtSecurityTokenHandler();
+            if (tokenHandler.CanReadToken(token))
+            {
+                var jwtToken = tokenHandler.ReadJwtToken(token);
+                userIdStr = jwtToken.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier || c.Type == "UserId")?.Value;
+            }
+        }
+
+        // 3. Fallback bezpieczeñstwa
+        if (!Guid.TryParse(userIdStr, out var userId))
+        {
+            userId = req.UserId ?? Guid.Empty;
+        }
+
         var order = new Microservices.Sales.Api.Entities.Order
         {
             Id = Guid.NewGuid(),
-            UserId = req.UserId,
+            UserId = userId,
             TotalPrice = req.TotalPrice
         };
 
