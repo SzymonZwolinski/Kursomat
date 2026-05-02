@@ -1,15 +1,15 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using Courses.Api.Data;
 using Courses.Api.Entities;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Courses.Api.Endpoints;
 
-public record CreateCourseRequest(string Title, string Description, decimal Price);
+public record CreateCourseRequest(string Name, string Description, decimal Price, string? VideoPath);
 public record CreateCourseResponse(Guid Id);
 
 [ApiController]
-[AllowAnonymous]
+[Authorize]
 public class CreateCourseEndpoint : ControllerBase
 {
     private readonly CoursesDbContext _dbContext;
@@ -25,9 +25,10 @@ public class CreateCourseEndpoint : ControllerBase
         var course = new Course
         {
             Id = Guid.NewGuid(),
-            Title = req.Title,
+            Title = req.Name, 
             Description = req.Description,
-            Price = req.Price
+            Price = req.Price,
+            VideoPath = req.VideoPath ?? string.Empty
         };
 
         _dbContext.Courses.Add(course);
