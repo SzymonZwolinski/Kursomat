@@ -6,7 +6,7 @@ using Users.Api.Helpers.Interfaces;
 
 namespace Users.Api.Endpoints;
 
-public record RegisterUserRequest(string Email, string Password, string FullName);
+public record RegisterUserRequest(string Email, string Password);
 public record RegisterUserResponse(Guid Id);
 
 [ApiController]
@@ -32,7 +32,6 @@ public class RegisterUserEndpoint : ControllerBase
             Id = Guid.NewGuid(),
             Email = req.Email,
             PasswordHash = passwordHash,
-            FullName = req.FullName
         };
 
         _dbContext.Users.Add(user);

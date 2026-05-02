@@ -20,7 +20,6 @@ public class UsersDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
             entity.Property(e => e.PasswordHash).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.FullName).HasMaxLength(100);
         });
     }
 }

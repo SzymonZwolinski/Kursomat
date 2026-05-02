@@ -5,7 +5,7 @@ using Users.Api.Data;
 
 namespace Users.Api.Endpoints;
 
-public record UserDto(Guid Id, string Email, string FullName);
+public record UserDto(Guid Id, string Email);
 
 [ApiController]
 [AllowAnonymous]
@@ -22,7 +22,7 @@ public class GetAllUsersEndpoint : ControllerBase
     public async Task<IActionResult> HandleAsync(CancellationToken ct)
     {
         var users = await _dbContext.Users
-            .Select(u => new UserDto(u.Id, u.Email, u.FullName))
+            .Select(u => new UserDto(u.Id, u.Email))
             .ToListAsync(ct);
 
         return Ok(users);

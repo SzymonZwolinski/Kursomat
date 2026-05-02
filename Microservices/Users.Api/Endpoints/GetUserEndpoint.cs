@@ -6,7 +6,7 @@ using Users.Api.Data;
 namespace Users.Api.Endpoints;
 
 public record GetUserRequest(Guid Id);
-public record GetUserResponse(Guid Id, string Email, string FullName);
+public record GetUserResponse(Guid Id, string Email);
 
 [ApiController]
 [AllowAnonymous]
@@ -29,6 +29,6 @@ public class GetUserEndpoint : ControllerBase
             return NotFound();
         }
 
-        return Ok(new GetUserResponse(user.Id, user.Email, user.FullName));
+        return Ok(new GetUserResponse(user.Id, user.Email));
     }
 }
