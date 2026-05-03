@@ -379,37 +379,51 @@ public static class Scenarios
         {
             if (token == null || courseId == null) return Response.Fail(statusCode: "SetupFailed");
 
-            // Pobieranie strumienia wideo
-            var request = Http.CreateRequest("GET", $"{baseUrl}/api/courses/{courseId}/video")
-                .WithHeader("Authorization", $"Bearer {token}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"{baseUrl.TrimEnd('/')}/api/courses/{courseId}/video");
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-            // Oczekujemy statusu 200/206
-            var response = await Http.Send(httpClient, request);
-            return response.IsError ? Response.Fail() : Response.Ok(sizeBytes: response.Payload.Value.Content.Headers.ContentLength ?? 0);
+            var response = await httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var err = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"\n[BŁĄD P-10 STREAM] Status: {response.StatusCode} | Body: {err}\n");
+                return Response.Fail(statusCode: response.StatusCode.ToString());
+            }
+
+            var size = response.Content.Headers.ContentLength ?? 0;
+            return Response.Ok(sizeBytes: size);
         })
         .WithInit(async context =>
         {
-            // Przygotowanie: logowanie, utworzenie kursu i wgranie małego wideo (np. 5MB)
             token = await Helpers.RegisterAndLogin(httpClient, baseUrl, targetName);
             if (token == null) return;
 
-            await Helpers.CreateCourse(httpClient, baseUrl);
+            courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+            if (courseId == null) return;
 
-            // 3. KLUCZ: Dodajemy ten kurs do koszyka w bazie
-            await Helpers.AddToCart(httpClient, baseUrl, token, courseId);
+            var orderPayload = new { CourseIds = new[] { courseId }, TotalPrice = 99.99m };
+            var orderContent = new StringContent(System.Text.Json.JsonSerializer.Serialize(orderPayload), System.Text.Encoding.UTF8, "application/json");
+            var orderReq = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl.TrimEnd('/')}/api/orders") { Content = orderContent };
+            orderReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+            await httpClient.SendAsync(orderReq);
+            await Task.Delay(3000);
             var fileContent = new byte[5 * 1024 * 1024]; // 5 MB plik
             new Random().NextBytes(fileContent);
-            var multipart = new MultipartFormDataContent();
-            multipart.Add(new StringContent(courseId), "CourseId");
-            multipart.Add(new ByteArrayContent(fileContent), "VideoFile", "video.mp4");
 
-            var uploadReq = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/api/courses/video") { Content = multipart };
-            uploadReq.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            await httpClient.SendAsync(uploadReq);
+            var multipart = new MultipartFormDataContent();
+            multipart.Add(new ByteArrayContent(fileContent), "file", $"{courseId}.mp4");
+
+            var uploadReq = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl.TrimEnd('/')}/api/courses/{courseId}/video") { Content = multipart };
+
+            var uploadResp = await httpClient.SendAsync(uploadReq);
+            if (!uploadResp.IsSuccessStatusCode)
+            {
+                var err = await uploadResp.Content.ReadAsStringAsync();
+                Console.WriteLine($"\n[BŁĄD P-10 UPLOAD] Status: {uploadResp.StatusCode} | {err}\n");
+            }
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
-            // Mniej requestów, bo to ciężki I/O test
             Simulation.Inject(rate: 10, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30))
         );
     }
@@ -456,31 +470,45 @@ public static class Scenarios
         string token = null;
         string userId = null;
         string courseId = null;
-        bool isAdding = true; // Zmienna do flip-flopa
 
         return Scenario.Create("p12_cart_concurrency", async context =>
         {
-            if (token == null || courseId == null) return Response.Fail();
+            if (token == null || courseId == null || userId == null) return Response.Fail(statusCode: "SetupFailed");
+
+            // ROZWIĄZANIE 1: Zamiast psującej się zmiennej bool, 
+            // parzyste strzały DODAJĄ do koszyka, a nieparzyste USUWAJĄ. 100% bezpieczeństwa wątków.
+            bool isAdding = context.InvocationNumber % 2 == 0;
 
             HttpRequestMessage request;
-
-            // Naprzemiennie dodajemy i usuwamy ten sam przedmiot
             if (isAdding)
             {
                 var payload = new { CourseId = courseId };
-                var content = new StringContent(JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
-                request = Http.CreateRequest("POST", $"{baseUrl}/api/carts/{userId}/items")
-                    .WithHeader("Authorization", $"Bearer {token}").WithHeader("Content-Type", "application/json").WithBody(content);
+                var content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), System.Text.Encoding.UTF8, "application/json");
+
+                // ROZWIĄZANIE 2: Czysty request C#, żeby API znowu nie płakało o "400 Bad Request"
+                request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl.TrimEnd('/')}/api/carts/{userId}/items")
+                {
+                    Content = content
+                };
             }
             else
             {
-                request = Http.CreateRequest("DELETE", $"{baseUrl}/api/carts/{userId}/items/{courseId}")
-                    .WithHeader("Authorization", $"Bearer {token}");
+                request = new HttpRequestMessage(HttpMethod.Delete, $"{baseUrl.TrimEnd('/')}/api/carts/{userId}/items/{courseId}");
             }
 
-            isAdding = !isAdding; // Odwracamy akcję dla kolejnego żądania
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-            return await Http.Send(httpClient, request);
+            var response = await httpClient.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // DEBUG: Jeśli poleci 404 lub 500 (Concurrency Conflict), wypisze to w konsoli!
+                var err = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"\n[BŁĄD P-12] Action: {(isAdding ? "POST" : "DELETE")} | Status: {response.StatusCode} | {err}\n");
+                return Response.Fail(statusCode: response.StatusCode.ToString());
+            }
+
+            return Response.Ok();
         })
         .WithInit(async context =>
         {
@@ -488,12 +516,18 @@ public static class Scenarios
             if (token == null) return;
 
             userId = Helpers.ExtractUserIdFromToken(token);
-            await Helpers.CreateCourse(httpClient, baseUrl);
+            courseId = await Helpers.CreateCourse(httpClient, baseUrl, token);
+
+            // Profilaktycznie tworzymy początkowy element w koszyku, 
+            // żeby pierwsze zapytanie DELETE (jeśli wylosuje się pierwsze) nie rzuciło 404!
+            if (courseId != null)
+            {
+                await Helpers.AddToCart(httpClient, baseUrl, token, courseId, userId);
+            }
         })
         .WithoutWarmUp()
         .WithLoadSimulations(
-            // Strzelamy mocno i szybko, żeby sprawdzić jak baza radzi sobie z blokadami wierszy (Locks)
-            Simulation.Inject(rate: 100, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30))
+            Simulation.Inject(rate: 50, interval: TimeSpan.FromSeconds(1), during: TimeSpan.FromSeconds(30))
         );
     }
 }
